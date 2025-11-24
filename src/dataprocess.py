@@ -5,12 +5,12 @@ from markdown_pdf import MarkdownPdf, Section
 from py_markdown_table.markdown_table import markdown_table
 from enum import Enum
 
-DEBUG = True
+DEBUG = False
 MAX_NUMBER_MONTH_IN_REPORT = 12
 
 class ReturnCodes(Enum):
     ERROR_PROGRAM = -10
-    ERROR_FILE_DATA_STAFF = -4
+    ERROR_FILE_DATA_ERROR = -4
     ERROR_FILE_LOADING = -2
     ERROR_FILE_ERROR = -1
     ERROR = 0
@@ -72,10 +72,11 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
         
         
         period_df = data_df.groupby(['rank category'])['allocation'].sum().astype(float)
-        
         result_dict[period] = period_df
+        
         result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
         dict_from_zipped = dict(zip(result_order_df['rank category'], result_order_df['staff category order']))
+        
         if len(results_order_dict.keys()) == 0:
             results_order_dict = dict_from_zipped
         else:
@@ -85,27 +86,33 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
     result_order_to_df['rank category'] = []
     result_order_to_df['staff category order'] = []
     order=1
-    for k, v in sorted(results_order_dict.items(), key=lambda item: (item, item)):
+    for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
         result_order_to_df['rank category'].append(k)
         result_order_to_df['staff category order'].append(order)
         order += 1
 
 
+
+
     result = pd.DataFrame(result_dict)
     results_order_df = pd.DataFrame.from_dict(result_order_to_df)
 
+
+    sorted_result_df = result.join(results_order_df.set_index(['rank category', 'staff category order']), how='inner')
+    #sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
+    #sorted_result_df.set_index('staff category order', inplace=True)
+
+    sorted_result_df.reset_index(inplace=True)
+    sorted_result_df.set_index('staff category order',inplace=True)
     
-    sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
-    sorted_result_df.set_index('staff category order', inplace=True)
-
-
     sorted_result_df.sort_index(inplace=True)
+    
     sorted_result_df.set_index('rank category',inplace=True)
 
     sorted_result_df.loc['Total'] = sorted_result_df.sum(numeric_only=True)
 
     sorted_result_df.reset_index(inplace=True)
-    
+
 
     sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient='index')
     
@@ -115,6 +122,7 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
         markdown_table_data.append(v)
     
     markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
+    markdown = markdown.replace('nan', '-')
     
     
     '''
@@ -143,6 +151,7 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
         font_size = "9px"
         padding = "2px"
     table_header_bg_color = '#4CAF50'
+    #table_header_bg_color = 'white'
     title_bg_color = '#4CAF50'
     css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color};color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}}"
     
@@ -187,7 +196,7 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
     result_order_to_df['rank category'] = []
     result_order_to_df['staff category order'] = []
     order=1
-    for k, v in sorted(results_order_dict.items(), key=lambda item: (item, item)):
+    for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
         result_order_to_df['rank category'].append(k)
         result_order_to_df['staff category order'].append(order)
         order += 1
@@ -217,7 +226,8 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
         markdown_table_data.append(v)
     
     markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
-    
+    markdown = markdown.replace('nan', '-')
+
     
     '''
     css = """
@@ -245,6 +255,7 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
         font_size = "9px"
         padding = "2px"
     table_header_bg_color = '#2596BE'
+    #table_header_bg_color = 'white'
     title_bg_color = '#2596BE'
     css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color} ;color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}}"
     
@@ -304,26 +315,41 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
         result_order_to_df['rank category'] = []
         result_order_to_df['staff category order'] = []
         order=1
-        for k, v in sorted(results_order_dict.items(), key=lambda item: (item, item)):
+        for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
             result_order_to_df['rank category'].append(k)
             result_order_to_df['staff category order'].append(order)
             order += 1
 
-        result = pd.DataFrame(result_dict)
-        results_order_df = pd.DataFrame.from_dict(result_order_to_df)
 
         
-        sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
+        result = pd.DataFrame(result_dict)
+        results_order_df = pd.DataFrame.from_dict(result_order_to_df)
+        
+        sorted_result_df = result.join(results_order_df.set_index(['rank category', 'staff category order']), how='inner')
+        
+        sorted_result_df.reset_index(inplace=True)
         sorted_result_df.set_index('staff category order', inplace=True)
 
-
+        #print(f"sorted_result_df before set_index and sort index {sorted_result_df}")
         sorted_result_df.sort_index(inplace=True)
+        #print(f"sorted_result_df before set_index and after sort index {sorted_result_df}")
+        
+        
         sorted_result_df.set_index('rank category',inplace=True)
+        
+        #print(f"sorted_result_df after set_index and sort index {sorted_result_df}")
+        #print(sorted_result_df.columns)
+        #print(sorted_result_df.index)
+
+        sorted_result_df['rank'] = sorted_result_df['rank'].astype('string')
+        #print(sorted_result_df)
 
         sorted_result_df.loc['Total'] = sorted_result_df.sum(numeric_only=True)
 
         sorted_result_df.reset_index(inplace=True)
-        
+        #print(f"sorted_result_df after reset index {sorted_result_df}")
+        #print(sorted_result_df.columns)
+        #print(sorted_result_df.index)
         sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient='index')
     
         markdown_table_data = []
@@ -332,6 +358,8 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
             markdown_table_data.append(v)
         
         markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
+        markdown = markdown.replace('nan', '-')
+
         markdown_with_costcentre_name = f'#### Cost Centre : {cost_centre}\n\n{markdown}'
 
         if len(available_periods) <= 6:
@@ -344,12 +372,18 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
             header_cell_y_padding = "10px"
             font_size = "12px"
             padding = "3px"
-        else:
+        elif len(available_periods) <= 11:
             cell_y_padding = "8px"
             header_cell_y_padding = "10px"
             font_size = "9px"
             padding = "2px"
+        else:
+            cell_y_padding = "8px"
+            header_cell_y_padding = "8px"
+            font_size = "8px"
+            padding = "2px"
         table_header_bg_color = '#135F2f'
+        #table_header_bg_color = 'white'
         title_bg_color = '#135F2f'
         css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color};color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}} h3 h4 {{text-align: left;}}"
         
@@ -473,7 +507,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     # check for duplicate StaffNo in base data
     if len(pd.unique(clean_base_data_df['StaffNo'])) != len(clean_base_data_df):
         #print("Warning: Duplicate Staff Numbers found in Base Data!")
-        return ReturnCodes.ERROR_FILE_DATA_STAFF
+        return ReturnCodes.ERROR_FILE_DATA_ERROR
     
     # set the right data types for data Series
     clean_base_data_df['FTE'] = clean_base_data_df['FTE'].astype(float)
@@ -580,12 +614,20 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
         clean_staff_category_order_data_dict = clean_staff_category_order_data_df.to_dict(orient='index')
 
         
-        sorted_staff_category_order_dict = dict(sorted(clean_staff_category_order_data_dict.items(), key=lambda item: item))
+        staff_category_order = {}
+        for v in clean_staff_category_order_data_dict.values():
+            staff_category_order[v['Staff Category']] = v['Order']
+            
+        '''
+        sorted_staff_category_order_dict = dict(sorted(clean_staff_category_order_data_dict.values(), key=lambda item: item))
+        print(f"clean_staff_category_order_data_dict: {clean_staff_category_order_data_dict}")
+        print(f"clean_staff_category_order_data_dict: {sorted_staff_category_order_dict}")
+        '''
         
         count = 1
         staff_category_order_dict = {}
-        for k,v in sorted_staff_category_order_dict.items():
-            staff_category_order_dict[v['Staff Category']] = count
+        for k, v in sorted(staff_category_order.items(), key=lambda x: (x[1], x[0])):
+            staff_category_order_dict[k] = count
             count += 1
             
 
@@ -596,7 +638,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
         staff_category_order_dict = {}
         for i in range(len(sorted_staff_category_order_list)):
             staff_category_order_dict[sorted_staff_category_order_list[i]] = i+1
-        
+            
     # expand the list
     clean_base_data_df = clean_base_data_df.set_index('StaffNo')
     clean_base_dict = clean_base_data_df.to_dict(orient='index')
@@ -614,7 +656,10 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
             unique_staff_in_base.add(staff_number)
             del clean_base_dict[staff_number]
         if staff_number in unique_staff_in_base:
-            expanded_entries.append({'staff_number' : staff_number, 'rank' : v['Rank'], 'rank category' : unique_rank_cat_dict[v['Rank']], 'staff category order' : staff_category_order_dict[unique_rank_cat_dict[v['Rank']]], 'cost centre code' : v['CCode'], 'cost centre name' : cost_centre_info[v['CCode']], 'allocation' : v['Allocated Percentage']})
+            if v['Rank'] in unique_rank_cat_dict and unique_rank_cat_dict[v['Rank']] in staff_category_order_dict:
+                expanded_entries.append({'staff_number' : staff_number, 'rank' : v['Rank'], 'rank category' : unique_rank_cat_dict[v['Rank']], 'staff category order' : staff_category_order_dict[unique_rank_cat_dict[v['Rank']]], 'cost centre code' : v['CCode'], 'cost centre name' : cost_centre_info[v['CCode']], 'allocation' : v['Allocated Percentage']})
+            else:
+                return ReturnCodes.ERROR_FILE_DATA_ERROR
         else:
             pass
             # found record in expand data but not in base data. It is not counted as error, just skip it.

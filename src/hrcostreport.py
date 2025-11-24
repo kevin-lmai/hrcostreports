@@ -265,9 +265,9 @@ def main(page: Page):
             generate_reports_button.disabled = False
             status_text_generate_reports.value = generate_report_status_content()
         elif result == ReturnCodes.ERROR_FILE_ERROR:
-            status_text_fte_upload.value = f"Oops!!\nInput file has error"
-        elif result == ReturnCodes.ERROR_FILE_DATA_STAFF:
-            status_text_fte_upload.value = f"Oops!!\nInput file has duplicated staff ID"
+            status_text_fte_upload.value = f"Oops!!\nInput file has error. Please check Headers and Sheets"
+        elif result == ReturnCodes.ERROR_FILE_DATA_ERROR:
+            status_text_fte_upload.value = f"Oops!!\nInput file has duplicated staff ID or Error in Category Order"
         elif result == ReturnCodes.ERROR_FILE_LOADING:
             status_text_fte_upload.value = f"Oops!!\nInput file cannot be loaded"
         elif result == ReturnCodes.ERROR_PROGRAM:
