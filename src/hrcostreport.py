@@ -1,6 +1,4 @@
-from copy import deepcopy
-import webbrowser
-from dataprocess import process_update_database, ReturnCodes, generate_department_summary_report
+from dataprocess import process_update_database, ReturnCodes, generate_department_fte_summary_report, generate_department_headcount_summary_report, generate_department_fte_costcentre_report
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import os
@@ -51,9 +49,14 @@ saved_database_file_directory = None
 saved_database_name = None
 
 report_start_date = None
-department_summary_report_file_name = "HR_headcount_summary_report"
-department_summary_report_title = "Yearly Department FTE Trend Report",
+department_fte_summary_report_file_name = "HR_department_fte_summary_report"
+department_fte_summary_report_title = "Yearly Department FTE Trend"
 
+department_headcount_summary_report_file_name = "HR_department_headcount_summary_report"
+department_headcount_summary_report_title = "Yearly Department Headcount Trend"
+
+department_fte_costcentre_report_file_name = "HR_department_fte_costcentres_report"
+department_fte_costcentre_report_title = "Yearly Department FTE (Cost Centres) Trend"
 
 
 
@@ -274,7 +277,6 @@ def main(page: Page):
         else:
             status_text_fte_upload.value = f"Oops!!\nUnknown error occurred"        
             
-        print(database_file_saved)
         page.update()
     
     update_database_button = ElevatedButton(
@@ -303,7 +305,6 @@ def main(page: Page):
 
     def generate_report_status_content():
         #global database_file_saved
-        print(database_file_saved)
         if database_file_saved:
             return f"Database file at {saved_database_file_directory}\nnamed {saved_database_name} is set."
         else:
@@ -320,9 +321,6 @@ def main(page: Page):
         global saved_database_name
         global database_file_saved
         
-        print("init generate report")
-        print(database_file_saved)
-
         if database_file_saved is False:
             saved_database_name = None
             saved_database_file_directory = None
@@ -351,16 +349,45 @@ def main(page: Page):
 # def generate_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: i):
 
     def generate_reports(e):
-        adj_department_summary_report_file_name = department_summary_report_file_name + "_" + str(report_start_date.year) + str(report_start_date.month).zfill(2) + "_" + str(report_start_date.hour).zfill(2) + str(report_start_date.minute).zfill(2) + ".pdf"
-        generate_department_summary_report(saved_database_file_directory + saved_database_name,
-                                adj_department_summary_report_file_name,
-                                department_summary_report_title,
+        database_file_name = saved_database_file_directory + saved_database_name
+        timestamp = str(report_start_date.year) + str(report_start_date.month).zfill(2) + "_" + str(report_start_date.hour).zfill(2) + str(report_start_date.minute).zfill(2)
+        
+        adj_department_fte_summary_report_file_name = department_fte_summary_report_file_name + "_" + timestamp + ".pdf"
+        generate_department_fte_summary_report(database_file_name,
+                                adj_department_fte_summary_report_file_name,
+                                department_fte_summary_report_title,
                                 report_start_date.year,
                                 report_start_date.month)
-        if os.path.exists(adj_department_summary_report_file_name):
-            status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_summary_report_file_name} was generated."
+
+        if os.path.exists(adj_department_fte_summary_report_file_name):
+            status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_fte_summary_report_file_name} was generated."
         else:
-            status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_summary_report_file_name} was not successful."
+            status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} was not successful."
+
+        adj_department_headcount_summary_report_file_name = department_headcount_summary_report_file_name + "_" + timestamp + ".pdf"
+        generate_department_headcount_summary_report(database_file_name,
+                                adj_department_headcount_summary_report_file_name,
+                                department_headcount_summary_report_title,
+                                report_start_date.year,
+                                report_start_date.month)
+        if os.path.exists(adj_department_headcount_summary_report_file_name):
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_headcount_summary_report_file_name} was generated."
+        else:
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_headcount_summary_report_file_name} was not successful."
+
+        
+        adj_department_fte_costcentre_report_file_name = department_fte_costcentre_report_file_name + "_" + timestamp + ".pdf"
+        generate_department_fte_costcentre_report(database_file_name,
+                                adj_department_fte_costcentre_report_file_name,
+                                department_fte_costcentre_report_title,
+                                report_start_date.year,
+                                report_start_date.month)
+        if os.path.exists(adj_department_fte_costcentre_report_file_name):
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_fte_costcentre_report_file_name} was generated."
+        else:
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_fte_costcentre_report_file_name} was not successful."
+
+
         page.update()
         
 
