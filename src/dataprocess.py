@@ -45,7 +45,7 @@ def get_available_periods(data_available: list, start_year: int, start_month: in
     for period in report_periods:
         if period in data_available:
             available_periods.append(period)
-    
+
     return available_periods
 
     
@@ -60,9 +60,9 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
 
     available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
 
-    if type(available_periods) is int:
-        return ReturnCodes.ERROR_PROGRAM
-    
+    if len(available_periods) == 0:
+        return ReturnCodes.ERROR_FILE_DATA_ERROR
+
     result_dict = {}
     results_order_dict = {}
 
@@ -172,8 +172,8 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
 
     available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
     
-    if type(available_periods) is int:
-        return ReturnCodes.ERROR_PROGRAM
+    if len(available_periods) == 0:
+        return ReturnCodes.ERROR_FILE_DATA_ERROR
     
     result_dict = {}
     results_order_dict = {}
@@ -276,8 +276,8 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
 
     available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
     
-    if type(available_periods) is int:
-        return ReturnCodes.ERROR_PROGRAM
+    if len(available_periods) == 0:
+        return ReturnCodes.ERROR_FILE_DATA_ERROR
     
     return_md = []
     all_costcentre_result_dict = {}

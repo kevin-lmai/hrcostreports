@@ -354,47 +354,52 @@ def main(page: Page):
         
         adj_department_fte_summary_report_file_name = department_fte_summary_report_file_name + "_" + timestamp + ".pdf"
         adj_department_fte_summary_report_file_name = saved_database_file_directory + adj_department_fte_summary_report_file_name        
-        generate_department_fte_summary_report(database_file_name,
+        
+        if generate_department_fte_summary_report(database_file_name,
                                 adj_department_fte_summary_report_file_name,
                                 department_fte_summary_report_title,
                                 report_start_date.year,
-                                report_start_date.month)
+                                report_start_date.month) == ReturnCodes.OK:
 
-        if os.path.exists(adj_department_fte_summary_report_file_name):
-            status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_fte_summary_report_file_name} was generated."
+            if os.path.exists(adj_department_fte_summary_report_file_name):
+                status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_fte_summary_report_file_name} was generated."
+            else:
+                status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} was not successful."
         else:
-            status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} was not successful."
+            status_text_generate_reports.value = f"Oops\nDatabase file has problem. Report named {adj_department_fte_summary_report_file_name} not generated"
 
         adj_department_headcount_summary_report_file_name = department_headcount_summary_report_file_name + "_" + timestamp + ".pdf"
         adj_department_headcount_summary_report_file_name = saved_database_file_directory + adj_department_headcount_summary_report_file_name
-        generate_department_headcount_summary_report(database_file_name,
+        
+        if generate_department_headcount_summary_report(database_file_name,
                                 adj_department_headcount_summary_report_file_name,
                                 department_headcount_summary_report_title,
                                 report_start_date.year,
-                                report_start_date.month)
-        if os.path.exists(adj_department_headcount_summary_report_file_name):
-            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_headcount_summary_report_file_name} was generated."
+                                report_start_date.month) == ReturnCodes.OK:
+            if os.path.exists(adj_department_headcount_summary_report_file_name):
+                status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_headcount_summary_report_file_name} was generated."
+            else:
+                status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_headcount_summary_report_file_name} was not successful."
         else:
-            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_headcount_summary_report_file_name} was not successful."
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nDatabase file has problem. Report named {adj_department_headcount_summary_report_file_name} not generated"
 
-        
+            
         adj_department_fte_costcentre_report_file_name = department_fte_costcentre_report_file_name + "_" + timestamp + ".pdf"
         adj_department_fte_costcentre_report_file_name = saved_database_file_directory + adj_department_fte_costcentre_report_file_name
-        generate_department_fte_costcentre_report(database_file_name,
+        
+        if generate_department_fte_costcentre_report(database_file_name,
                                 adj_department_fte_costcentre_report_file_name,
                                 department_fte_costcentre_report_title,
                                 report_start_date.year,
-                                report_start_date.month)
-        if os.path.exists(adj_department_fte_costcentre_report_file_name):
-            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_fte_costcentre_report_file_name} was generated."
+                                report_start_date.month) == ReturnCodes.OK:
+            if os.path.exists(adj_department_fte_costcentre_report_file_name):
+                status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Congratulation!!\nReport {adj_department_fte_costcentre_report_file_name} was generated."
+            else:
+                status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_fte_costcentre_report_file_name} was not successful."
         else:
-            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nGenerating report named {adj_department_fte_costcentre_report_file_name} was not successful."
-
+            status_text_generate_reports.value = status_text_generate_reports.value + "\n" + f"Oops\nDatabase file has problem. Report named {adj_department_fte_costcentre_report_file_name} not generated"
 
         page.update()
-        
-
-        
     
     generate_reports_button = ElevatedButton(
                         "Generate Reports",
