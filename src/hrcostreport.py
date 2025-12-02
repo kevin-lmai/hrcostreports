@@ -353,6 +353,7 @@ def main(page: Page):
         timestamp = str(report_start_date.year) + str(report_start_date.month).zfill(2) + "_" + str(report_start_date.hour).zfill(2) + str(report_start_date.minute).zfill(2)
         
         adj_department_fte_summary_report_file_name = department_fte_summary_report_file_name + "_" + timestamp + ".pdf"
+        adj_department_fte_summary_report_file_name = saved_database_file_directory + adj_department_fte_summary_report_file_name        
         generate_department_fte_summary_report(database_file_name,
                                 adj_department_fte_summary_report_file_name,
                                 department_fte_summary_report_title,
@@ -365,6 +366,7 @@ def main(page: Page):
             status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} was not successful."
 
         adj_department_headcount_summary_report_file_name = department_headcount_summary_report_file_name + "_" + timestamp + ".pdf"
+        adj_department_headcount_summary_report_file_name = saved_database_file_directory + adj_department_headcount_summary_report_file_name
         generate_department_headcount_summary_report(database_file_name,
                                 adj_department_headcount_summary_report_file_name,
                                 department_headcount_summary_report_title,
@@ -377,6 +379,7 @@ def main(page: Page):
 
         
         adj_department_fte_costcentre_report_file_name = department_fte_costcentre_report_file_name + "_" + timestamp + ".pdf"
+        adj_department_fte_costcentre_report_file_name = saved_database_file_directory + adj_department_fte_costcentre_report_file_name
         generate_department_fte_costcentre_report(database_file_name,
                                 adj_department_fte_costcentre_report_file_name,
                                 department_fte_costcentre_report_title,
