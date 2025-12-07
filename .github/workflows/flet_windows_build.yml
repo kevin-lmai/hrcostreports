@@ -1,5 +1,15 @@
 name: Flet Window Build
 
+on:
+  # Runs on push to any of the below branches
+  push:
+    branches:
+      - main
+
+  # Runs on pull request events that target one of the below branches
+  pull_request:
+    branches:
+      - main
 jobs:
   build:
     runs-on: windows-latest
