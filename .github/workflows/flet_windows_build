@@ -1,12 +1,12 @@
 name: Flet Window Build
 
 jobs:
-  uv-example:
-    name: python
+  build:
     runs-on: runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -14,6 +14,5 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run tests
-        # For example, using `pytest`
-        run: uv run pytest tests
+      - name: Run build
+        run: flet build window
