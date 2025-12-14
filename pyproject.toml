@@ -39,6 +39,7 @@ path = "src"
 [tool.uv]
 dev-dependencies = [
     "flet[all]==0.28.2",
+    "pytest>=8.4.2",
 ]
 
 [tool.poetry]

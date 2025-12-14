@@ -23,12 +23,16 @@ RETURN_CODE = Enum('Color', [('RED', 1), ('GREEN', 2), ('BLUE', 3)])
 pd.options.display.float_format = '${:,.2f}'.format
 
 def get_available_periods(data_available: list, start_year: int, start_month: int, max_number_of_month: int):
-    if max_number_of_month <= 1:
+    
+    if max_number_of_month < 1 or max_number_of_month > 12:
         return ReturnCodes.ERROR_PROGRAM
-        #raise "Number of month should be greater than 1"
+        #raise "Number of months should be from 1 to 12"
+    if start_year < 2000 or start_year > 3000:
+        return ReturnCodes.ERROR_PROGRAM
+        #raise "Start month should be between 2000 and 3000"
     if start_month < 1 or start_month > 12:
         return ReturnCodes.ERROR_PROGRAM
-        raise "Start month should be between 1 and 12"
+        #raise "Start month should be between 1 and 12"
     
     report_periods = []
     report_year = start_year
@@ -53,7 +57,8 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
     
     
     try:
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
         #raise f"Error loading file {data_file_name}: {e}"
@@ -70,8 +75,9 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
     for period in available_periods:
         data_df = data_df_dict[period]
         
-        
-        period_df = data_df.groupby(['rank category'])['allocation'].sum().astype(float)
+        data_df['allocation'] = data_df['allocation'].astype(float) 
+        #period_df = data_df.groupby(['rank category'])['allocation'].sum().astype(float)
+        period_df = data_df.groupby(['rank category'])['allocation'].sum()
         result_dict[period] = period_df
         
         result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
@@ -162,11 +168,11 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
     return([return_md])
 
     
-    
 def prepare_department_headcount_trend_report(data_file_name: str, start_year: int, start_month: int, max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
     
     try:
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
 
@@ -264,18 +270,19 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
     return_md['content'] = markdown
     return_md['css'] = css
     return([return_md])
-
-
     
 def prepare_department_fte_costcentre_report(data_file_name: str, start_year: int, start_month: int, max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
     
     try:
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
 
     available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
     
+    if type(available_periods) is ReturnCodes:
+        return available_periods  
     if len(available_periods) == 0:
         return ReturnCodes.ERROR_FILE_DATA_ERROR
     
@@ -301,7 +308,10 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
         result_dict = {}
         results_order_dict = {}
         for period, target_df in v.items():
-            period_df = target_df.groupby(['rank category', 'rank'])['allocation'].sum().astype(float)
+            new_target_df = target_df.copy()
+            new_target_df['allocation'] = new_target_df['allocation'].astype(float) 
+            #period_df = target_df.groupby(['rank category', 'rank'])['allocation'].sum().astype(float)
+            period_df = new_target_df.groupby(['rank category', 'rank'])['allocation'].sum()
             result_dict[period] = period_df
             
             result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
@@ -433,26 +443,16 @@ def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
     
     return missing_headers
 
-'''
-def generate_report(data_file_name: str):
-    try:
-        data_df = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
-    except Exception as e:
-        return f"Error loading base sheet: {e}"
 
-    #header = ["staff number","rank","rank category","staff category order","cost centre code","cost centre name","allocation"]
-          
-    pass
-'''
 
 def process_update_database(excelfile: str, month_of_data_str:str, reportname:str) -> int:
     """
-    This function is used for CUHK Hospital Data Processing of HR / Cost Centre Allocation.
+    This function is used for Hospital Data Processing of HR / Cost Centre Allocation.
     
     Process the input Excel file which has two sheets by expanding the data in sheet1 with sheet2
     
     Parameters:
-    excelfile (str): Path to the Excel file containing the data, with 2 sheets
+    excelfile (str): Path to the Excel file containing the data, with at least 3 sheets
 
     Returns:
     error message or success message which is "OK"
@@ -480,6 +480,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     # read sheet 1
     try:
         file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0,dtype=object)
+        #file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_ERROR
     
@@ -525,7 +526,8 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
 
     # read sheet 2
     try:
-        file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
+        #file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
+        file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1)
     except Exception as e:
 
         return ReturnCodes.ERROR_FILE_ERROR
@@ -549,11 +551,13 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     new_clean_expand_data_df = clean_expand_data_df.copy()
     new_clean_expand_data_df['Allocated Percentage'] = new_clean_expand_data_df['Allocated Percentage'].astype(float)
     new_clean_expand_data_df['Allocated Percentage'] = new_clean_expand_data_df['Allocated Percentage']/100.0
+    new_clean_expand_data_df['CCode'] = new_clean_expand_data_df['CCode'].astype(str)
     clean_expand_data_df = new_clean_expand_data_df
 
     # read sheet 3, cost center information
     try:
         file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0,dtype=object)
+        #file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0)
     except Exception as e:
         #print(f"Error loading base sheet 3: {e}")
         return ReturnCodes.ERROR_FILE_ERROR
@@ -575,7 +579,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     
     if DEBUG:    
         if file_cost_centre_records_count != clean_cost_centre_records_count:
-            print(f"Expand data had {file_expand_records_count - clean_expand_records_count} empty rows removed.")
+            print(f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count } 'Disabled' rows removed.")
 
 
     # get the cost centre information
@@ -583,12 +587,23 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     
     cost_centre_info = {}
     for k,v in clean_cost_centre_dict.items():
-        cost_centre_info[v['Value']] = v['Description']
+        cost_centre_info[str(v['Value'])] = v['Description']
             
-    
+   
+    if DEBUG:
+        first_line = True
+        for k,v in cost_centre_info.items():
+            if first_line:
+                print(f"{k} : {v}", end='')
+                first_line = False
+            else:
+                print(", ")
+                print(f"{k} : {v}", end='')
+        print()
     # read sheet 4 Staff Category Order
     try:
-        file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0,dtype=object)
+        #file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0,dtype=object)
+        file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0)
         has_staff_category_order_data = True
     except Exception as e:
         has_staff_category_order_data = False
@@ -617,12 +632,6 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
         staff_category_order = {}
         for v in clean_staff_category_order_data_dict.values():
             staff_category_order[v['Staff Category']] = v['Order']
-            
-        '''
-        sorted_staff_category_order_dict = dict(sorted(clean_staff_category_order_data_dict.values(), key=lambda item: item))
-        print(f"clean_staff_category_order_data_dict: {clean_staff_category_order_data_dict}")
-        print(f"clean_staff_category_order_data_dict: {sorted_staff_category_order_dict}")
-        '''
         
         count = 1
         staff_category_order_dict = {}
@@ -657,7 +666,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
             del clean_base_dict[staff_number]
         if staff_number in unique_staff_in_base:
             if v['Rank'] in unique_rank_cat_dict and unique_rank_cat_dict[v['Rank']] in staff_category_order_dict:
-                expanded_entries.append({'staff_number' : staff_number, 'rank' : v['Rank'], 'rank category' : unique_rank_cat_dict[v['Rank']], 'staff category order' : staff_category_order_dict[unique_rank_cat_dict[v['Rank']]], 'cost centre code' : v['CCode'], 'cost centre name' : cost_centre_info[v['CCode']], 'allocation' : v['Allocated Percentage']})
+                expanded_entries.append({'staff_number' : staff_number, 'rank' : v['Rank'], 'rank category' : unique_rank_cat_dict[v['Rank']], 'staff category order' : staff_category_order_dict[unique_rank_cat_dict[v['Rank']]], 'cost centre code' : str(v['CCode']).zfill(3), 'cost centre name' : cost_centre_info[str(v['CCode']).zfill(3)], 'allocation' : v['Allocated Percentage']})
             else:
                 return ReturnCodes.ERROR_FILE_DATA_ERROR
         else:
@@ -666,7 +675,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
             # print(f"Error : Rank {v['Rank']} not found in base data for staff number {staff_number}.")
          
     for k,v in clean_base_dict.items():
-        expanded_entries.append({'staff_number' : k, 'rank' : v['Rank'], 'rank category' : v['Staff Category'], 'staff category order' : staff_category_order_dict[v['Staff Category']],'cost centre code' : v['Default Cost Centre'], 'cost centre name' : cost_centre_info[v['Default Cost Centre']], 'allocation' : v['FTE']})
+        expanded_entries.append({'staff_number' : k, 'rank' : v['Rank'], 'rank category' : v['Staff Category'], 'staff category order' : staff_category_order_dict[v['Staff Category']],'cost centre code' : str(v['Default Cost Centre']).zfill(3), 'cost centre name' : cost_centre_info[str(v['Default Cost Centre']).zfill(3)], 'allocation' : v['FTE']})
     
     result_df = pd.DataFrame(expanded_entries)
     
@@ -692,7 +701,7 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
 
 def generate_department_fte_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
     department_fte_trend_content = prepare_department_fte_trend_report(fte_data_file_name,start_year, start_month,number_of_month)
-    if type(department_fte_trend_content) is int:
+    if type(department_fte_trend_content) is ReturnCodes:
         return department_fte_trend_content
     elif type(department_fte_trend_content) is list:
         period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
@@ -708,7 +717,7 @@ def generate_department_fte_summary_report(fte_data_file_name: str, summary_repo
 
 def generate_department_headcount_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
     department_headcount_trend_content = prepare_department_headcount_trend_report(fte_data_file_name,start_year, start_month,number_of_month)
-    if type(department_headcount_trend_content) is int:
+    if type(department_headcount_trend_content) is ReturnCodes:
         return department_headcount_trend_content
     elif type(department_headcount_trend_content) is list:
         period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
@@ -725,7 +734,7 @@ def generate_department_headcount_summary_report(fte_data_file_name: str, summar
 def generate_department_fte_costcentre_report(fte_data_file_name: str, costcentre_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
     department_fte_costcentre_content = prepare_department_fte_costcentre_report(fte_data_file_name,start_year, start_month,number_of_month)
     #print(department_fte_trend_content)
-    if type(department_fte_costcentre_content) is int:
+    if type(department_fte_costcentre_content) is ReturnCodes:
         return department_fte_costcentre_content
     elif type(department_fte_costcentre_content) is list:
         period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
