@@ -8,6 +8,7 @@ from enum import Enum
 DEBUG = False
 MAX_NUMBER_MONTH_IN_REPORT = 12
 
+
 class ReturnCodes(Enum):
     ERROR_PROGRAM = -10
     ERROR_FILE_DATA_ERROR = -4
@@ -17,34 +18,38 @@ class ReturnCodes(Enum):
     OK = 1
     OK_GEN_NEW_DATABASE = 2
     OK_UPDATE_DATABASE = 3
-    
-RETURN_CODE = Enum('Color', [('RED', 1), ('GREEN', 2), ('BLUE', 3)])
 
-pd.options.display.float_format = '${:,.2f}'.format
 
-def get_available_periods(data_available: list, start_year: int, start_month: int, max_number_of_month: int):
-    
+RETURN_CODE = Enum("Color", [("RED", 1), ("GREEN", 2), ("BLUE", 3)])
+
+pd.options.display.float_format = "${:,.2f}".format
+
+
+def get_available_periods(
+    data_available: list, start_year: int, start_month: int, max_number_of_month: int
+):
+
     if max_number_of_month < 1 or max_number_of_month > 12:
         return ReturnCodes.ERROR_PROGRAM
-        #raise "Number of months should be from 1 to 12"
+        # raise "Number of months should be from 1 to 12"
     if start_year < 2000 or start_year > 3000:
         return ReturnCodes.ERROR_PROGRAM
-        #raise "Start month should be between 2000 and 3000"
+        # raise "Start month should be between 2000 and 3000"
     if start_month < 1 or start_month > 12:
         return ReturnCodes.ERROR_PROGRAM
-        #raise "Start month should be between 1 and 12"
-    
+        # raise "Start month should be between 1 and 12"
+
     report_periods = []
     report_year = start_year
     report_month = start_month
-    for i in range(max_number_of_month):        
+    for i in range(max_number_of_month):
         report_periods.append(f"{str(report_year)}{str(report_month).zfill(2)}")
         if report_month == 12:
             report_month = 1
             report_year += 1
         else:
             report_month += 1
-    
+
     available_periods = []
     for period in report_periods:
         if period in data_available:
@@ -52,18 +57,24 @@ def get_available_periods(data_available: list, start_year: int, start_month: in
 
     return available_periods
 
-    
-def prepare_department_fte_trend_report(data_file_name: str, start_year: int, start_month: int, max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    
-    
+
+def prepare_department_fte_trend_report(
+    data_file_name: str,
+    start_year: int,
+    start_month: int,
+    max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+
     try:
-        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
+        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
-        #raise f"Error loading file {data_file_name}: {e}"
+        # raise f"Error loading file {data_file_name}: {e}"
 
-    available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
+    available_periods = get_available_periods(
+        data_df_dict.keys(), start_year, start_month, max_number_of_month
+    )
 
     if len(available_periods) == 0:
         return ReturnCodes.ERROR_FILE_DATA_ERROR
@@ -71,66 +82,73 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
     result_dict = {}
     results_order_dict = {}
 
-    
     for period in available_periods:
         data_df = data_df_dict[period]
-        
-        data_df['allocation'] = data_df['allocation'].astype(float) 
-        #period_df = data_df.groupby(['rank category'])['allocation'].sum().astype(float)
-        period_df = data_df.groupby(['rank category'])['allocation'].sum()
+
+        data_df["allocation"] = data_df["allocation"].astype(float)
+        # period_df = data_df.groupby(['rank category'])['allocation'].sum().astype(float)
+        period_df = data_df.groupby(["rank category"])["allocation"].sum()
         result_dict[period] = period_df
-        
-        result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
-        dict_from_zipped = dict(zip(result_order_df['rank category'], result_order_df['staff category order']))
-        
+
+        result_order_df = data_df.drop_duplicates(subset=["rank category"]).loc[
+            :, ["rank category", "staff category order"]
+        ]
+        dict_from_zipped = dict(
+            zip(
+                result_order_df["rank category"],
+                result_order_df["staff category order"],
+            )
+        )
+
         if len(results_order_dict.keys()) == 0:
             results_order_dict = dict_from_zipped
         else:
             results_order_dict.update(dict_from_zipped)
-                
+
     result_order_to_df = {}
-    result_order_to_df['rank category'] = []
-    result_order_to_df['staff category order'] = []
-    order=1
+    result_order_to_df["rank category"] = []
+    result_order_to_df["staff category order"] = []
+    order = 1
     for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
-        result_order_to_df['rank category'].append(k)
-        result_order_to_df['staff category order'].append(order)
+        result_order_to_df["rank category"].append(k)
+        result_order_to_df["staff category order"].append(order)
         order += 1
-
-
-
 
     result = pd.DataFrame(result_dict)
     results_order_df = pd.DataFrame.from_dict(result_order_to_df)
 
-
-    sorted_result_df = result.join(results_order_df.set_index(['rank category', 'staff category order']), how='inner')
-    #sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
-    #sorted_result_df.set_index('staff category order', inplace=True)
+    sorted_result_df = result.join(
+        results_order_df.set_index(["rank category", "staff category order"]),
+        how="inner",
+    )
+    # sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
+    # sorted_result_df.set_index('staff category order', inplace=True)
 
     sorted_result_df.reset_index(inplace=True)
-    sorted_result_df.set_index('staff category order',inplace=True)
-    
+    sorted_result_df.set_index("staff category order", inplace=True)
+
     sorted_result_df.sort_index(inplace=True)
-    
-    sorted_result_df.set_index('rank category',inplace=True)
 
-    sorted_result_df.loc['Total'] = sorted_result_df.sum(numeric_only=True)
+    sorted_result_df.set_index("rank category", inplace=True)
+
+    sorted_result_df.loc["Total"] = sorted_result_df.sum(numeric_only=True)
 
     sorted_result_df.reset_index(inplace=True)
 
+    sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient="index")
 
-    sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient='index')
-    
     markdown_table_data = []
-    
-    for k,v in sorted_result_dict.items():
+
+    for k, v in sorted_result_dict.items():
         markdown_table_data.append(v)
-    
-    markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
-    markdown = markdown.replace('nan', '-')
-    
-    
+
+    markdown = (
+        markdown_table(markdown_table_data)
+        .set_params(row_sep="markdown", quote=False)
+        .get_markdown()
+    )
+    markdown = markdown.replace("nan", "-")
+
     '''
     css = """
         table {width: 100%; border-collapse: collapse;}
@@ -140,7 +158,7 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
         h2 {text-align: center; background-color: #4CAF50;}
     """
     '''
-    
+
     if len(available_periods) <= 6:
         cell_y_padding = "10px"
         header_cell_y_padding = "25px"
@@ -156,85 +174,102 @@ def prepare_department_fte_trend_report(data_file_name: str, start_year: int, st
         header_cell_y_padding = "10px"
         font_size = "9px"
         padding = "2px"
-    table_header_bg_color = '#4CAF50'
-    #table_header_bg_color = 'white'
-    title_bg_color = '#4CAF50'
+    table_header_bg_color = "#4CAF50"
+    # table_header_bg_color = 'white'
+    title_bg_color = "#4CAF50"
     css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color};color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}}"
-    
-    
-    return_md = {}
-    return_md['content'] = markdown
-    return_md['css'] = css
-    return([return_md])
 
-    
-def prepare_department_headcount_trend_report(data_file_name: str, start_year: int, start_month: int, max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    
+    return_md = {}
+    return_md["content"] = markdown
+    return_md["css"] = css
+    return [return_md]
+
+
+def prepare_department_headcount_trend_report(
+    data_file_name: str,
+    start_year: int,
+    start_month: int,
+    max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+
     try:
-        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
+        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
 
-    available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
-    
+    available_periods = get_available_periods(
+        data_df_dict.keys(), start_year, start_month, max_number_of_month
+    )
+
     if len(available_periods) == 0:
         return ReturnCodes.ERROR_FILE_DATA_ERROR
-    
+
     result_dict = {}
     results_order_dict = {}
-            
+
     for period in available_periods:
         data_df = data_df_dict[period]
-    
-        period_df = data_df.drop_duplicates(subset=['staff_number']).groupby(['rank category']).size()
+
+        period_df = (
+            data_df.drop_duplicates(subset=["staff_number"])
+            .groupby(["rank category"])
+            .size()
+        )
         result_dict[period] = period_df
-        
-        result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
-        dict_from_zipped = dict(zip(result_order_df['rank category'], result_order_df['staff category order']))
+
+        result_order_df = data_df.drop_duplicates(subset=["rank category"]).loc[
+            :, ["rank category", "staff category order"]
+        ]
+        dict_from_zipped = dict(
+            zip(
+                result_order_df["rank category"],
+                result_order_df["staff category order"],
+            )
+        )
         if len(results_order_dict.keys()) == 0:
             results_order_dict = dict_from_zipped
         else:
             results_order_dict.update(dict_from_zipped)
-        
-    
+
     result_order_to_df = {}
-    result_order_to_df['rank category'] = []
-    result_order_to_df['staff category order'] = []
-    order=1
+    result_order_to_df["rank category"] = []
+    result_order_to_df["staff category order"] = []
+    order = 1
     for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
-        result_order_to_df['rank category'].append(k)
-        result_order_to_df['staff category order'].append(order)
+        result_order_to_df["rank category"].append(k)
+        result_order_to_df["staff category order"].append(order)
         order += 1
 
-    result = pd.DataFrame(result_dict)    
+    result = pd.DataFrame(result_dict)
     results_order_df = pd.DataFrame.from_dict(result_order_to_df)
-        
-    sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
-    sorted_result_df.set_index('staff category order', inplace=True)
 
+    sorted_result_df = pd.merge(
+        result, results_order_df, on="rank category", how="inner"
+    )
+    sorted_result_df.set_index("staff category order", inplace=True)
 
     sorted_result_df.sort_index(inplace=True)
-    sorted_result_df.set_index('rank category',inplace=True)
-    
-    sorted_result_df.loc['Total'] = sorted_result_df.sum(numeric_only=True)
+    sorted_result_df.set_index("rank category", inplace=True)
+
+    sorted_result_df.loc["Total"] = sorted_result_df.sum(numeric_only=True)
 
     sorted_result_df.reset_index(inplace=True)
-    
 
-    sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient='index')
-    
+    sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient="index")
+
     markdown_table_data = []
-    
-    
-    
-    for k,v in sorted_result_dict.items():
-        markdown_table_data.append(v)
-    
-    markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
-    markdown = markdown.replace('nan', '-')
 
-    
+    for k, v in sorted_result_dict.items():
+        markdown_table_data.append(v)
+
+    markdown = (
+        markdown_table(markdown_table_data)
+        .set_params(row_sep="markdown", quote=False)
+        .get_markdown()
+    )
+    markdown = markdown.replace("nan", "-")
+
     '''
     css = """
         table {width: 100%; border-collapse: collapse;}
@@ -244,7 +279,7 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
         h2 {text-align: center; background-color: #4CAF50;}
     """
     '''
-    
+
     if len(available_periods) <= 6:
         cell_y_padding = "10px"
         header_cell_y_padding = "25px"
@@ -260,117 +295,143 @@ def prepare_department_headcount_trend_report(data_file_name: str, start_year: i
         header_cell_y_padding = "10px"
         font_size = "9px"
         padding = "2px"
-    table_header_bg_color = '#2596BE'
-    #table_header_bg_color = 'white'
-    title_bg_color = '#2596BE'
+    table_header_bg_color = "#2596BE"
+    # table_header_bg_color = 'white'
+    title_bg_color = "#2596BE"
     css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color} ;color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}}"
-    
-    
+
     return_md = {}
-    return_md['content'] = markdown
-    return_md['css'] = css
-    return([return_md])
-    
-def prepare_department_fte_costcentre_report(data_file_name: str, start_year: int, start_month: int, max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    
+    return_md["content"] = markdown
+    return_md["css"] = css
+    return [return_md]
+
+
+def prepare_department_fte_costcentre_report(
+    data_file_name: str,
+    start_year: int,
+    start_month: int,
+    max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+
     try:
-        #data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
-        data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0)
+        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
+        data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_LOADING
 
-    available_periods = get_available_periods(data_df_dict.keys(), start_year, start_month, max_number_of_month)
-    
+    available_periods = get_available_periods(
+        data_df_dict.keys(), start_year, start_month, max_number_of_month
+    )
+
     if type(available_periods) is ReturnCodes:
-        return available_periods  
+        return available_periods
     if len(available_periods) == 0:
         return ReturnCodes.ERROR_FILE_DATA_ERROR
-    
+
     return_md = []
     all_costcentre_result_dict = {}
-        
+
     for period in available_periods:
         data_df = data_df_dict[period]
 
-        cost_centres = data_df['cost centre name'].copy().drop_duplicates().to_list()
-        
-        data_df['rank category duplicate'] = data_df['rank category']
-        
+        cost_centres = data_df["cost centre name"].copy().drop_duplicates().to_list()
+
+        data_df["rank category duplicate"] = data_df["rank category"]
+
         for c in cost_centres:
             if c not in all_costcentre_result_dict.keys():
-                all_costcentre_result_dict[c] = {period : data_df[data_df['cost centre name'] == c]}
+                all_costcentre_result_dict[c] = {
+                    period: data_df[data_df["cost centre name"] == c]
+                }
             else:
-                all_costcentre_result_dict[c][period] = data_df[data_df['cost centre name'] == c]
-                
-                
+                all_costcentre_result_dict[c][period] = data_df[
+                    data_df["cost centre name"] == c
+                ]
 
     for cost_centre, v in sorted(all_costcentre_result_dict.items()):
         result_dict = {}
         results_order_dict = {}
         for period, target_df in v.items():
             new_target_df = target_df.copy()
-            new_target_df['allocation'] = new_target_df['allocation'].astype(float) 
-            #period_df = target_df.groupby(['rank category', 'rank'])['allocation'].sum().astype(float)
-            period_df = new_target_df.groupby(['rank category', 'rank'])['allocation'].sum()
+            new_target_df["allocation"] = new_target_df["allocation"].astype(float)
+            # period_df = target_df.groupby(['rank category', 'rank'])['allocation'].sum().astype(float)
+            period_df = new_target_df.groupby(["rank category", "rank"])[
+                "allocation"
+            ].sum()
             result_dict[period] = period_df
-            
-            result_order_df = data_df.drop_duplicates(subset=['rank category']).loc[:, ['rank category', 'staff category order']]
-            dict_from_zipped = dict(zip(result_order_df['rank category'], result_order_df['staff category order']))
+
+            result_order_df = data_df.drop_duplicates(subset=["rank category"]).loc[
+                :, ["rank category", "staff category order"]
+            ]
+            dict_from_zipped = dict(
+                zip(
+                    result_order_df["rank category"],
+                    result_order_df["staff category order"],
+                )
+            )
             if len(results_order_dict.keys()) == 0:
                 results_order_dict = dict_from_zipped
             else:
                 results_order_dict.update(dict_from_zipped)
-            
+
         result_order_to_df = {}
-        result_order_to_df['rank category'] = []
-        result_order_to_df['staff category order'] = []
-        order=1
+        result_order_to_df["rank category"] = []
+        result_order_to_df["staff category order"] = []
+        order = 1
         for k, v in sorted(results_order_dict.items(), key=lambda x: (x[1], x[0])):
-            result_order_to_df['rank category'].append(k)
-            result_order_to_df['staff category order'].append(order)
+            result_order_to_df["rank category"].append(k)
+            result_order_to_df["staff category order"].append(order)
             order += 1
 
-
-        
         result = pd.DataFrame(result_dict)
         results_order_df = pd.DataFrame.from_dict(result_order_to_df)
-        
-        sorted_result_df = result.join(results_order_df.set_index(['rank category', 'staff category order']), how='inner')
-        
-        sorted_result_df.reset_index(inplace=True)
-        sorted_result_df.set_index('staff category order', inplace=True)
 
-        #print(f"sorted_result_df before set_index and sort index {sorted_result_df}")
+        sorted_result_df = result.join(
+            results_order_df.set_index(["rank category", "staff category order"]),
+            how="inner",
+        )
+
+        sorted_result_df.reset_index(inplace=True)
+        sorted_result_df.set_index("staff category order", inplace=True)
+
+        # print(f"sorted_result_df before set_index and sort index {sorted_result_df}")
         sorted_result_df.sort_index(inplace=True)
-        #print(f"sorted_result_df before set_index and after sort index {sorted_result_df}")
-        
-        
-        sorted_result_df.set_index('rank category',inplace=True)
-        
-        #print(f"sorted_result_df after set_index and sort index {sorted_result_df}")
-        #print(sorted_result_df.columns)
-        #print(sorted_result_df.index)
+        # print(f"sorted_result_df before set_index and after sort index {sorted_result_df}")
 
-        sorted_result_df['rank'] = sorted_result_df['rank'].astype('string')
-        #print(sorted_result_df)
+        sorted_result_df.set_index("rank category", inplace=True)
 
-        sorted_result_df.loc['Total'] = sorted_result_df.sum(numeric_only=True)
+        # print(f"sorted_result_df after set_index and sort index {sorted_result_df}")
+        # print(sorted_result_df.columns)
+        # print(sorted_result_df.index)
+
+        sorted_result_df["rank"] = sorted_result_df["rank"].astype("string")
+        # print(sorted_result_df)
+
+        sorted_result_df.loc["Total"] = sorted_result_df.sum(numeric_only=True)
 
         sorted_result_df.reset_index(inplace=True)
-        #print(f"sorted_result_df after reset index {sorted_result_df}")
-        #print(sorted_result_df.columns)
-        #print(sorted_result_df.index)
-        sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient='index')
-    
-        markdown_table_data = []
-    
-        for k,v in sorted_result_dict.items():
-            markdown_table_data.append(v)
-        
-        markdown = markdown_table(markdown_table_data).set_params(row_sep = 'markdown', quote = False).get_markdown()
-        markdown = markdown.replace('nan', '-')
+        # print(f"sorted_result_df after reset index {sorted_result_df}")
+        # print(sorted_result_df.columns)
+        # print(sorted_result_df.index)
+        sorted_result_dict = (
+            sorted_result_df.round(2).astype(str).to_dict(orient="index")
+        )
 
-        markdown_with_costcentre_name = f'#### Cost Centre : {cost_centre}\n\n{markdown}'
+        markdown_table_data = []
+
+        for k, v in sorted_result_dict.items():
+            markdown_table_data.append(v)
+
+        markdown = (
+            markdown_table(markdown_table_data)
+            .set_params(row_sep="markdown", quote=False)
+            .get_markdown()
+        )
+        markdown = markdown.replace("nan", "-")
+
+        markdown_with_costcentre_name = (
+            f"#### Cost Centre : {cost_centre}\n\n{markdown}"
+        )
 
         if len(available_periods) <= 6:
             cell_y_padding = "10px"
@@ -392,20 +453,19 @@ def prepare_department_fte_costcentre_report(data_file_name: str, start_year: in
             header_cell_y_padding = "8px"
             font_size = "8px"
             padding = "2px"
-        table_header_bg_color = '#135F2f'
-        #table_header_bg_color = 'white'
-        title_bg_color = '#135F2f'
+        table_header_bg_color = "#135F2f"
+        # table_header_bg_color = 'white'
+        title_bg_color = "#135F2f"
         css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color};color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}} h3 h4 {{text-align: left;}}"
-        
-        
+
         result_md = {}
-        result_md['content'] = markdown_with_costcentre_name
-        result_md['css'] = css
+        result_md["content"] = markdown_with_costcentre_name
+        result_md["css"] = css
         return_md.append(result_md)
-    return(return_md)
+    return return_md
 
-def generate_pdf_report(report_name: str, content : list, title: str = "Report"):
 
+def generate_pdf_report(report_name: str, content: list, title: str = "Report"):
     '''
     text = """# Section with Table
 
@@ -415,51 +475,56 @@ def generate_pdf_report(report_name: str, content : list, title: str = "Report")
     |ListCell|<ul><li>FirstBullet</li><li>SecondBullet</li></ul>|
     """
     '''
-    #css = "table, th, td {border: 1px solid black;}"
+    # css = "table, th, td {border: 1px solid black;}"
 
-    #header= f'<h1 style="text-align: center;">{title}</h1>'
-    header= f'## {title}'
+    # header= f'<h1 style="text-align: center;">{title}</h1>'
+    header = f"## {title}"
 
-    #header2 = f'### Cost Centre : {xxx}'
+    # header2 = f'### Cost Centre : {xxx}'
 
-    #header = f"##{title} XXX\n###Hello World\n\n"
-    #header = "##Head2\n\n### <a id='head3'></a>Head3\n\n"
-    #header = "##Head2\n"
-    #header = 'Head'
-    
+    # header = f"##{title} XXX\n###Hello World\n\n"
+    # header = "##Head2\n\n### <a id='head3'></a>Head3\n\n"
+    # header = "##Head2\n"
+    # header = 'Head'
+
     pdf = MarkdownPdf()
     for c in content:
-        pdf.add_section(Section(header+'\n\n'+c['content'], paper_size="A4-L", toc=False), user_css=c['css'])
+        pdf.add_section(
+            Section(header + "\n\n" + c["content"], paper_size="A4-L", toc=False),
+            user_css=c["css"],
+        )
     pdf.save(report_name)
+
 
 def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
     """
-        check header are available in dataframe
+    check header are available in dataframe
     """
     missing_headers = []
     for h in expected_headers:
         if h not in df.columns:
             missing_headers.append(h)
-    
+
     return missing_headers
 
 
-
-def process_update_database(excelfile: str, month_of_data_str:str, reportname:str) -> int:
+def process_update_database(
+    excelfile: str, month_of_data_str: str, reportname: str
+) -> int:
     """
     This function is used for Hospital Data Processing of HR / Cost Centre Allocation.
-    
+
     Process the input Excel file which has two sheets by expanding the data in sheet1 with sheet2
-    
+
     Parameters:
     excelfile (str): Path to the Excel file containing the data, with at least 3 sheets
 
     Returns:
     error message or success message which is "OK"
     """
-    
+
     # read whole file:
-    '''
+    """
     ### want to read all sheet but in vains as different sheets has differ header row number
     
     try:
@@ -475,47 +540,57 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
     if len(file_dict_keys_list) < 3:
         raise f"Data file should have at least 3 sheets"
     
-    '''
-    
+    """
+
     # read sheet 1
     try:
-        file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0,dtype=object)
-        #file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0)
+        file_base_data_df = pd.read_excel(
+            excelfile, sheet_name=0, header=0, dtype=object
+        )
+        # file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0)
     except Exception as e:
         return ReturnCodes.ERROR_FILE_ERROR
-    
-    header = ['StaffNo', 'Rank', 'Section', 'Staff Category', 'FTE', 'Default Cost Centre']
+
+    header = [
+        "StaffNo",
+        "Rank",
+        "Section",
+        "Staff Category",
+        "FTE",
+        "Default Cost Centre",
+    ]
     missing_headers = check_file_header(file_base_data_df, header)
     if len(missing_headers) > 0:
         return ReturnCodes.ERROR_FILE_ERROR
-    
+
     base_data_df = file_base_data_df[header]
-    clean_base_data_df = base_data_df.dropna(how='all')
-    
+    clean_base_data_df = base_data_df.dropna(how="all")
+
     # Remove last row , if Rank is empty
     last_row_df = clean_base_data_df.tail(1)
-    if len(last_row_df.dropna(subset=['Rank'])) == 0:
+    if len(last_row_df.dropna(subset=["Rank"])) == 0:
         clean_base_data_df = clean_base_data_df.head(len(clean_base_data_df) - 1)
 
-    file_base_records_count : int = len(base_data_df.index)
-    clean_base_records_count : int = len(clean_base_data_df.index)
+    file_base_records_count: int = len(base_data_df.index)
+    clean_base_records_count: int = len(clean_base_data_df.index)
 
     if file_base_records_count != clean_base_records_count:
         pass
-        #print(f"Base data had {file_base_records_count - clean_base_records_count} empty rows removed.")
-
+        # print(f"Base data had {file_base_records_count - clean_base_records_count} empty rows removed.")
 
     # check for duplicate StaffNo in base data
-    if len(pd.unique(clean_base_data_df['StaffNo'])) != len(clean_base_data_df):
-        #print("Warning: Duplicate Staff Numbers found in Base Data!")
+    if len(pd.unique(clean_base_data_df["StaffNo"])) != len(clean_base_data_df):
+        # print("Warning: Duplicate Staff Numbers found in Base Data!")
         return ReturnCodes.ERROR_FILE_DATA_ERROR
-    
-    # set the right data types for data Series
-    clean_base_data_df['FTE'] = clean_base_data_df['FTE'].astype(float)
 
-    rank_cat = pd.DataFrame(clean_base_data_df['Rank']+"\t"+clean_base_data_df['Staff Category'])
-    rank_cat.columns = ['cat_info']
-    unique_rank_cat = pd.unique(rank_cat['cat_info']).tolist()
+    # set the right data types for data Series
+    clean_base_data_df["FTE"] = clean_base_data_df["FTE"].astype(float)
+
+    rank_cat = pd.DataFrame(
+        clean_base_data_df["Rank"] + "\t" + clean_base_data_df["Staff Category"]
+    )
+    rank_cat.columns = ["cat_info"]
+    unique_rank_cat = pd.unique(rank_cat["cat_info"]).tolist()
     unique_rank_cat_dict = {}
     for i in unique_rank_cat:
         cats = i.split("\t")
@@ -526,233 +601,358 @@ def process_update_database(excelfile: str, month_of_data_str:str, reportname:st
 
     # read sheet 2
     try:
-        #file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
-        file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1)
+        # file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
+        file_expand_data_df = pd.read_excel(excelfile, sheet_name=1, header=1)
     except Exception as e:
 
         return ReturnCodes.ERROR_FILE_ERROR
-        
+
     first_row_df = file_expand_data_df.head(1)
-    if len(first_row_df.dropna(subset=['Rank'])) == 0:
+    if len(first_row_df.dropna(subset=["Rank"])) == 0:
         clean_base_data_df = clean_base_data_df.head(len(clean_base_data_df) - 1)
 
-    header = ['StaffNo', 'Rank', 'CCode', 'CostCentre', 'Allocated Percentage']
+    header = ["StaffNo", "Rank", "CCode", "CostCentre", "Allocated Percentage"]
     missing_headers = check_file_header(file_expand_data_df, header)
     if len(missing_headers) > 0:
 
         return ReturnCodes.ERROR_FILE_ERROR
-    
-    expand_data_df = file_expand_data_df[header]
-    clean_expand_data_df = expand_data_df.dropna(how='all')
 
-    file_expand_records_count : int = len(file_expand_data_df.index)        
-    clean_expand_records_count : int = len(clean_expand_data_df.index)
-        
+    expand_data_df = file_expand_data_df[header]
+    clean_expand_data_df = expand_data_df.dropna(how="all")
+
+    file_expand_records_count: int = len(file_expand_data_df.index)
+    clean_expand_records_count: int = len(clean_expand_data_df.index)
+
     new_clean_expand_data_df = clean_expand_data_df.copy()
-    new_clean_expand_data_df['Allocated Percentage'] = new_clean_expand_data_df['Allocated Percentage'].astype(float)
-    new_clean_expand_data_df['Allocated Percentage'] = new_clean_expand_data_df['Allocated Percentage']/100.0
-    new_clean_expand_data_df['CCode'] = new_clean_expand_data_df['CCode'].astype(str)
+    new_clean_expand_data_df["Allocated Percentage"] = new_clean_expand_data_df[
+        "Allocated Percentage"
+    ].astype(float)
+    new_clean_expand_data_df["Allocated Percentage"] = (
+        new_clean_expand_data_df["Allocated Percentage"] / 100.0
+    )
+    new_clean_expand_data_df["CCode"] = new_clean_expand_data_df["CCode"].astype(str)
     clean_expand_data_df = new_clean_expand_data_df
+
+    if DEBUG:
+        print(f"clean_expand_data_df ------ ")
+        print(clean_expand_data_df.head(5))
 
     # read sheet 3, cost center information
     try:
-        file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0,dtype=object)
-        #file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0)
+        file_cost_centre_data_df = pd.read_excel(
+            excelfile, sheet_name=2, header=0, dtype=object
+        )
+        # file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0)
     except Exception as e:
-        #print(f"Error loading base sheet 3: {e}")
+        # print(f"Error loading base sheet 3: {e}")
         return ReturnCodes.ERROR_FILE_ERROR
-    
-    
-    header = ['Value', 'Description','Enabled/ Disabled']
+
+    header = ["Value", "Description", "Enabled/ Disabled"]
     missing_headers = check_file_header(file_cost_centre_data_df, header)
     if len(missing_headers) > 0:
-        #print(f"Error: sheet 3 Missing expected column '{", ".join(missing_headers)}' in cost centre  data sheet.")
+        # print(f"Error: sheet 3 Missing expected column '{", ".join(missing_headers)}' in cost centre  data sheet.")
         return ReturnCodes.ERROR_FILE_ERROR
 
-    
     cost_centre_data_df = file_cost_centre_data_df[header]
-    clean_cost_centre_data_df = cost_centre_data_df.dropna(how='all')
-    clean_cost_centre_data_df = clean_cost_centre_data_df[clean_cost_centre_data_df['Enabled/ Disabled'] == 'Enabled']
+    clean_cost_centre_data_df = cost_centre_data_df.dropna(how="all")
+    clean_cost_centre_data_df = clean_cost_centre_data_df[
+        clean_cost_centre_data_df["Enabled/ Disabled"] == "Enabled"
+    ]
 
-    file_cost_centre_records_count : int = len(file_cost_centre_data_df.index)        
-    clean_cost_centre_records_count : int = len(clean_cost_centre_data_df.index)
-    
-    if DEBUG:    
+    file_cost_centre_records_count: int = len(file_cost_centre_data_df.index)
+    clean_cost_centre_records_count: int = len(clean_cost_centre_data_df.index)
+
+    if DEBUG:
         if file_cost_centre_records_count != clean_cost_centre_records_count:
-            print(f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count } 'Disabled' rows removed.")
-
+            print(
+                f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count } 'Disabled' rows removed."
+            )
 
     # get the cost centre information
-    clean_cost_centre_dict = clean_cost_centre_data_df.to_dict(orient='index')
-    
+    clean_cost_centre_dict = clean_cost_centre_data_df.to_dict(orient="index")
+
     cost_centre_info = {}
-    for k,v in clean_cost_centre_dict.items():
-        cost_centre_info[str(v['Value'])] = v['Description']
-            
-   
+    for k, v in clean_cost_centre_dict.items():
+        cost_centre_info[str(v["Value"])] = v["Description"]
+
     if DEBUG:
         first_line = True
-        for k,v in cost_centre_info.items():
+        for k, v in cost_centre_info.items():
             if first_line:
-                print(f"{k} : {v}", end='')
+                print(f"{k} : {v}", end="")
                 first_line = False
             else:
                 print(", ")
-                print(f"{k} : {v}", end='')
+                print(f"{k} : {v}", end="")
         print()
     # read sheet 4 Staff Category Order
     try:
-        #file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0,dtype=object)
-        file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0)
+        # file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0,dtype=object)
+        file_staff_category_order_data_df = pd.read_excel(
+            excelfile, sheet_name=3, header=0
+        )
         has_staff_category_order_data = True
     except Exception as e:
         has_staff_category_order_data = False
 
-
     if has_staff_category_order_data:
-        header = ['Staff Category', 'Order']
+        header = ["Staff Category", "Order"]
         missing_headers = check_file_header(file_staff_category_order_data_df, header)
         if len(missing_headers) > 0:
             return ReturnCodes.ERROR_FILE_ERROR
-            #return f"Error: Missing expected column '{", ".join(missing_headers)}' in staff category data sheet."
-        
-        staff_category_order_data_df = file_staff_category_order_data_df[header]
-        clean_staff_category_order_data_df = staff_category_order_data_df.dropna(how='all')
-        
-        file_staff_category_order_records_count : int = len(file_staff_category_order_data_df.index)        
-        clean_staff_category_order_records_count : int = len(clean_staff_category_order_data_df.index)
-        
-        if DEBUG:
-            if file_staff_category_order_records_count != clean_staff_category_order_records_count:
-                print(f"Expand data had {file_expand_records_count - clean_expand_records_count} empty rows removed.")
-    
-        clean_staff_category_order_data_dict = clean_staff_category_order_data_df.to_dict(orient='index')
+            # return f"Error: Missing expected column '{", ".join(missing_headers)}' in staff category data sheet."
 
-        
+        staff_category_order_data_df = file_staff_category_order_data_df[header]
+        clean_staff_category_order_data_df = staff_category_order_data_df.dropna(
+            how="all"
+        )
+
+        file_staff_category_order_records_count: int = len(
+            file_staff_category_order_data_df.index
+        )
+        clean_staff_category_order_records_count: int = len(
+            clean_staff_category_order_data_df.index
+        )
+
+        if DEBUG:
+            if (
+                file_staff_category_order_records_count
+                != clean_staff_category_order_records_count
+            ):
+                print(
+                    f"Expand data had {file_expand_records_count - clean_expand_records_count} empty rows removed."
+                )
+
+        clean_staff_category_order_data_dict = (
+            clean_staff_category_order_data_df.to_dict(orient="index")
+        )
+
         staff_category_order = {}
         for v in clean_staff_category_order_data_dict.values():
-            staff_category_order[v['Staff Category']] = v['Order']
-        
+            staff_category_order[v["Staff Category"]] = v["Order"]
+
         count = 1
         staff_category_order_dict = {}
         for k, v in sorted(staff_category_order.items(), key=lambda x: (x[1], x[0])):
             staff_category_order_dict[k] = count
             count += 1
-            
 
     else:
 
-        sorted_staff_category_order_list = sorted(pd.unique(clean_base_data_df['Staff Category']).tolist())
-        #sorted_staff_category_order_list = sorted(staff_category_order_list)
+        sorted_staff_category_order_list = sorted(
+            pd.unique(clean_base_data_df["Staff Category"]).tolist()
+        )
+        # sorted_staff_category_order_list = sorted(staff_category_order_list)
         staff_category_order_dict = {}
         for i in range(len(sorted_staff_category_order_list)):
-            staff_category_order_dict[sorted_staff_category_order_list[i]] = i+1
-            
+            staff_category_order_dict[sorted_staff_category_order_list[i]] = i + 1
+
     # expand the list
-    clean_base_data_df = clean_base_data_df.set_index('StaffNo')
-    clean_base_dict = clean_base_data_df.to_dict(orient='index')
+    clean_base_data_df = clean_base_data_df.set_index("StaffNo")
+    clean_base_dict = clean_base_data_df.to_dict(orient="index")
+    if DEBUG:
+        print(f"clean_base_dict ------ ")
+        print(clean_base_dict)
     # clean_base_dict has key as StaffNo, value as dict of other columns
-    clean_expand_dict = clean_expand_data_df.to_dict(orient='index')
+    clean_expand_dict = clean_expand_data_df.to_dict(orient="index")
     # clean_expand_dict has key as index, value as dict of other columns, including StaffNo as StaffNo is not unique here
-        
+
     expanded_entries = []
     staff_rank_category = {}
-    unique_staff_in_base = set()
-    for k,v in clean_expand_dict.items():
-        staff_number = v['StaffNo']
+    unique_staff_in_base = set(clean_base_dict.keys())
+    for k, v in clean_expand_dict.items():
+        staff_number = str(v["StaffNo"])
+        if DEBUG:
+            print(f"Processing expand record for staff number {staff_number}")
+            print(v)
         if staff_number in clean_base_dict.keys():
-            staff_rank_category[staff_number] = clean_base_dict[staff_number]['Staff Category']
-            unique_staff_in_base.add(staff_number)
+            print(f"Found staff number {staff_number} in base data.")
+            staff_rank_category[staff_number] = clean_base_dict[staff_number][
+                "Staff Category"
+            ]
+            # unique_staff_in_base.add(staff_number)
             del clean_base_dict[staff_number]
         if staff_number in unique_staff_in_base:
-            if v['Rank'] in unique_rank_cat_dict and unique_rank_cat_dict[v['Rank']] in staff_category_order_dict:
-                expanded_entries.append({'staff_number' : staff_number, 'rank' : v['Rank'], 'rank category' : unique_rank_cat_dict[v['Rank']], 'staff category order' : staff_category_order_dict[unique_rank_cat_dict[v['Rank']]], 'cost centre code' : str(v['CCode']).zfill(3), 'cost centre name' : cost_centre_info[str(v['CCode']).zfill(3)], 'allocation' : v['Allocated Percentage']})
+            if (
+                v["Rank"] in unique_rank_cat_dict.keys()
+                and unique_rank_cat_dict[v["Rank"]] in staff_category_order_dict.keys()
+            ):
+                expanded_item = {
+                    "staff_number": staff_number,
+                    "rank": v["Rank"],
+                    "rank category": unique_rank_cat_dict[v["Rank"]],
+                    "staff category order": staff_category_order_dict[
+                        unique_rank_cat_dict[v["Rank"]]
+                    ],
+                    "cost centre code": str(v["CCode"]).zfill(3),
+                    "cost centre name": cost_centre_info[str(v["CCode"]).zfill(3)],
+                    "allocation": v["Allocated Percentage"],
+                }
+                expanded_entries.append(expanded_item)
+
+                if DEBUG:
+                    print(f"Adding expanded record for staff number {staff_number}")
             else:
                 return ReturnCodes.ERROR_FILE_DATA_ERROR
         else:
-            pass
+
             # found record in expand data but not in base data. It is not counted as error, just skip it.
-            # print(f"Error : Rank {v['Rank']} not found in base data for staff number {staff_number}.")
-         
-    for k,v in clean_base_dict.items():
-        expanded_entries.append({'staff_number' : k, 'rank' : v['Rank'], 'rank category' : v['Staff Category'], 'staff category order' : staff_category_order_dict[v['Staff Category']],'cost centre code' : str(v['Default Cost Centre']).zfill(3), 'cost centre name' : cost_centre_info[str(v['Default Cost Centre']).zfill(3)], 'allocation' : v['FTE']})
-    
+            if DEBUG:
+                print(
+                    f"Error : Rank {v['Rank']} not found in base data for staff number {staff_number}."
+                )
+
+    for k, v in clean_base_dict.items():
+        clean_item = {
+            "staff_number": k,
+            "rank": v["Rank"],
+            "rank category": v["Staff Category"],
+            "staff category order": staff_category_order_dict[v["Staff Category"]],
+            "cost centre code": str(v["Default Cost Centre"]).zfill(3),
+            "cost centre name": cost_centre_info[
+                str(v["Default Cost Centre"]).zfill(3)
+            ],
+            "allocation": v["FTE"],
+        }
+        expanded_entries.append(clean_item)
+
+        # if DEBUG:
+        #    print(f"Adding base only record for staff number {k}")
+        #    print(clean_item)
+
+        # expanded_entries.append({'staff_number' : k, 'rank' : v['Rank'], 'rank category' : v['Staff Category'], 'staff category order' : staff_category_order_dict[v['Staff Category']],'cost centre code' : str(v['Default Cost Centre']).zfill(3), 'cost centre name' : cost_centre_info[str(v['Default Cost Centre']).zfill(3)], 'allocation' : v['FTE']})
+
     result_df = pd.DataFrame(expanded_entries)
-    
+    if DEBUG:
+        print(f"Total records processed: {len(result_df.index)}")
+        print(result_df)
+
     if os.path.exists(reportname) == True:
-        with pd.ExcelWriter(f"{reportname}", mode='a') as writer:  
-                #df1.to_excel(writer, sheet_name='Sheet_name_3')
+        with pd.ExcelWriter(f"{reportname}", mode="a") as writer:
+            # df1.to_excel(writer, sheet_name='Sheet_name_3')
             workBook = writer.book
             try:
                 workBook.remove(workBook[f"{month_of_data_str}"])
             except:  # noqa: E722
                 pass
-                #print(f"Error: removing existing sheet {month_of_data_str} in {reportname}")
-                #return ReturnCodes.ERROR_FILE_ERROR
+                # print(f"Error: removing existing sheet {month_of_data_str} in {reportname}")
+                # return ReturnCodes.ERROR_FILE_ERROR
             finally:
-                result_df.to_excel(writer,index=False,sheet_name=f"{month_of_data_str}")
+                result_df.to_excel(
+                    writer, index=False, sheet_name=f"{month_of_data_str}"
+                )
         return ReturnCodes.OK_UPDATE_DATABASE
     else:
-        with pd.ExcelWriter(f"{reportname}", mode='w') as writer:  
-                #df1.to_excel(writer, sheet_name='Sheet_name_3')
-            result_df.to_excel(writer,index=False,sheet_name=f"{month_of_data_str}")
+        with pd.ExcelWriter(f"{reportname}", mode="w") as writer:
+            # df1.to_excel(writer, sheet_name='Sheet_name_3')
+            result_df.to_excel(writer, index=False, sheet_name=f"{month_of_data_str}")
         return ReturnCodes.OK_GEN_NEW_DATABASE
-        
 
-def generate_department_fte_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    department_fte_trend_content = prepare_department_fte_trend_report(fte_data_file_name,start_year, start_month,number_of_month)
+
+def generate_department_fte_summary_report(
+    fte_data_file_name: str,
+    summary_report_file_name: str,
+    report_title: str,
+    start_year: int,
+    start_month: int,
+    number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+    department_fte_trend_content = prepare_department_fte_trend_report(
+        fte_data_file_name, start_year, start_month, number_of_month
+    )
     if type(department_fte_trend_content) is ReturnCodes:
         return department_fte_trend_content
     elif type(department_fte_trend_content) is list:
-        period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
+        period = (
+            f"{str(start_year)}"
+            if start_month == 1
+            else f"{str(start_year)}/{str(start_year+1)}"
+        )
         report_title = f"{report_title} {period}"
-        generate_pdf_report(summary_report_file_name, department_fte_trend_content, report_title)
+        generate_pdf_report(
+            summary_report_file_name, department_fte_trend_content, report_title
+        )
     else:
         if DEBUG:
-            print(f"Error: department_headcount_trend_content is '{department_fte_trend_content}'")
+            print(
+                f"Error: department_headcount_trend_content is '{department_fte_trend_content}'"
+            )
         return ReturnCodes.ERROR_PROGRAM
 
     return ReturnCodes.OK
 
 
-def generate_department_headcount_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    department_headcount_trend_content = prepare_department_headcount_trend_report(fte_data_file_name,start_year, start_month,number_of_month)
+def generate_department_headcount_summary_report(
+    fte_data_file_name: str,
+    summary_report_file_name: str,
+    report_title: str,
+    start_year: int,
+    start_month: int,
+    number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+    department_headcount_trend_content = prepare_department_headcount_trend_report(
+        fte_data_file_name, start_year, start_month, number_of_month
+    )
     if type(department_headcount_trend_content) is ReturnCodes:
         return department_headcount_trend_content
     elif type(department_headcount_trend_content) is list:
-        period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
+        period = (
+            f"{str(start_year)}"
+            if start_month == 1
+            else f"{str(start_year)}/{str(start_year+1)}"
+        )
         report_title = f"{report_title} {period}"
-        generate_pdf_report(summary_report_file_name, department_headcount_trend_content, report_title)
+        generate_pdf_report(
+            summary_report_file_name, department_headcount_trend_content, report_title
+        )
     else:
         if DEBUG:
-            print(f"Error: department_headcount_trend_content is '{department_headcount_trend_content}'")
+            print(
+                f"Error: department_headcount_trend_content is '{department_headcount_trend_content}'"
+            )
         return ReturnCodes.ERROR_PROGRAM
-    
+
     return ReturnCodes.OK
 
 
-def generate_department_fte_costcentre_report(fte_data_file_name: str, costcentre_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT):
-    department_fte_costcentre_content = prepare_department_fte_costcentre_report(fte_data_file_name,start_year, start_month,number_of_month)
-    #print(department_fte_trend_content)
+def generate_department_fte_costcentre_report(
+    fte_data_file_name: str,
+    costcentre_report_file_name: str,
+    report_title: str,
+    start_year: int,
+    start_month: int,
+    number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
+):
+    department_fte_costcentre_content = prepare_department_fte_costcentre_report(
+        fte_data_file_name, start_year, start_month, number_of_month
+    )
+    # print(department_fte_trend_content)
     if type(department_fte_costcentre_content) is ReturnCodes:
         return department_fte_costcentre_content
     elif type(department_fte_costcentre_content) is list:
-        period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
+        period = (
+            f"{str(start_year)}"
+            if start_month == 1
+            else f"{str(start_year)}/{str(start_year+1)}"
+        )
         report_title = f"{report_title} {period}"
-        generate_pdf_report(costcentre_report_file_name, department_fte_costcentre_content, report_title)
+        generate_pdf_report(
+            costcentre_report_file_name, department_fte_costcentre_content, report_title
+        )
     else:
         if DEBUG:
-            print(f"Error: department_headcount_trend_content is '{department_fte_costcentre_content}'")
+            print(
+                f"Error: department_headcount_trend_content is '{department_fte_costcentre_content}'"
+            )
         return ReturnCodes.ERROR_PROGRAM
-    
-    return ReturnCodes.OK
 
+    return ReturnCodes.OK
 
 
 if __name__ == "__main__":
     # Load the dataset
-    
-    '''
+
+    """
     report_year = 2025
     report_month = 7
     report_period = f"{str(report_year)}{str(report_month).zfill(2)}"
@@ -760,41 +960,49 @@ if __name__ == "__main__":
     #filename = 'Headcount to Finance Dept - Aug 2025.xlsx'
     #filename = 'Headcount to Finance Dept - Sept 2025.xlsx'
     #filename = 'Headcount to Finance Dept - Oct 2025.xlsx'
-    
+
     filename = 'Headcount to Finance Dept - July 2025.xlsx'
-    
+
     result = process_update_database(filename,report_period,report_data_file)
     if type(process_update_database) is int and process_update_database <= 0:
         print(f"Error: Error {ReturnCodes(process_update_database).name} ")
-    
-    '''
-    
+
+    """
+
     database_file = "HR_FTE_Database.xlsx"
     start_year = 2025
     start_month = 7
-    
-    '''
+
+    """
     department_fte_summary_report_file_name = "HR_department_fte_summary_report.pdf"
     department_fte_summary_report_title = "Yearly Department FTE Trend.pdf"
     
     generate_department_fte_summary_report(database_file, department_fte_summary_report_file_name, department_fte_summary_report_title, start_year, start_month, 12)
-    '''
-    
-        
-    department_headcount_summary_report_file_name = "HR_department_headcount_summary_report.pdf"
-    department_headcount_summary_report_title = "Yearly Department Headcount Trend.pdf"
-    
-    generate_department_headcount_summary_report(database_file, department_headcount_summary_report_file_name, department_headcount_summary_report_title, start_year, start_month, 12)
+    """
 
-    '''
+    department_headcount_summary_report_file_name = (
+        "HR_department_headcount_summary_report.pdf"
+    )
+    department_headcount_summary_report_title = "Yearly Department Headcount Trend.pdf"
+
+    generate_department_headcount_summary_report(
+        database_file,
+        department_headcount_summary_report_file_name,
+        department_headcount_summary_report_title,
+        start_year,
+        start_month,
+        12,
+    )
+
+    """
     department_fte_costcentre_report_file_name = "HR_department_fte_summary_report.pdf"
     department_fte_costcentre_report_title = "Yearly Department FTE Trend.pdf"
     
     generate_department_fte_costcentre_report(database_file, department_fte_costcentre_report_file_name, department_fte_costcentre_report_title, start_year, start_month, 12)
 
-    '''
+    """
 
-    '''
+    """
     period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
     
     summary_report_file_name = "HR_headcount_summary_report_main.pdf"
@@ -807,5 +1015,4 @@ if __name__ == "__main__":
         report_title = "Yearly Department FTE Trend Report " + period   
         generate_pdf_report(summary_report_file_name,department_fte_trend_content, report_title)
 
-    '''
-
+    """
