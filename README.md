@@ -10,7 +10,8 @@
 - Sheet 4 : A table of list order in report of Staff Category. If omitted, order will be in alphabetical order
 
 ### Output file:
-- Department summary report generated.
+- Department reports generated.
 
-### Data Exception
-- FTE in Override Sheet for each staff number in Base Sheet may not be aligned 
+# Data constraint
+- FTE in Override Sheet should be equal to 1.0 (100%). Report will be generated but issue number will be shown
+- Staff Number found in Override Sheet but not found in Base Sheet, will also be shown

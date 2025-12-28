@@ -7,10 +7,12 @@ exported class:
 
 exported functions:
 - process_update_database
+- process_source_data
 - ReturnCodes
 - generate_department_fte_summary_report
 - generate_department_headcount_summary_report
 - generate_department_fte_costcentre_report
+- generate_or_update_database
 
 local functions:
 - get_available_periods
@@ -28,7 +30,7 @@ from markdown_pdf import MarkdownPdf, Section
 from py_markdown_table.markdown_table import markdown_table
 from enum import Enum
 
-# set DEBUG True to display verbose debug information
+# set DEBUG True to display verbose debug information, programmer use only
 DEBUG = False
 
 # set the maximum number of months in report
@@ -406,7 +408,7 @@ def prepare_department_fte_costcentre_report(
 
         sorted_result_df.set_index("rank category", inplace=True)
 
-        sorted_result_df["rank"] = sorted_result_df["rank"].astype("string")
+        sorted_result_df["rank"] = sorted_result_df["rank"].astype(str)
 
         sorted_result_df.loc["Total"] = sorted_result_df.sum(numeric_only=True)
 
@@ -489,10 +491,8 @@ def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
     return missing_headers
 
 
-def process_update_database(
-    excelfile: str, month_of_data_str: str, reportname: str
-) -> int:
-    """Process the source data file and update the database file"""
+def process_source_data(excelfile: str) -> int:
+    """Process the source excel file and return data dictionary or error code"""
 
     # read sheet 1
     try:
@@ -537,6 +537,7 @@ def process_update_database(
 
     # set the right data types for data Series
     clean_base_data_df["FTE"] = clean_base_data_df["FTE"].astype(float)
+    clean_base_data_df["StaffNo"] = clean_base_data_df["StaffNo"].astype(int).astype(str)
 
     rank_cat = pd.DataFrame(
         clean_base_data_df["Rank"] + "\t" + clean_base_data_df["Staff Category"]
@@ -579,11 +580,13 @@ def process_update_database(
     new_clean_expand_data_df["Allocated Percentage"] = new_clean_expand_data_df[
         "Allocated Percentage"
     ].astype(float)
+    new_clean_expand_data_df["StaffNo"] = new_clean_expand_data_df["StaffNo"].astype(int).astype(str)
     new_clean_expand_data_df["Allocated Percentage"] = (
         new_clean_expand_data_df["Allocated Percentage"] / 100.0
     )
-    new_clean_expand_data_df["CCode"] = new_clean_expand_data_df["CCode"].astype(str)
+    new_clean_expand_data_df["CCode"] = new_clean_expand_data_df["CCode"].astype(int).astype(str)
     clean_expand_data_df = new_clean_expand_data_df
+
 
     if DEBUG:
         print("clean_expand_data_df ------ ")
@@ -711,9 +714,22 @@ def process_update_database(
 
     expanded_entries = []
     staff_rank_category = {}
-    unique_staff_in_base = set(clean_base_dict.keys())
+    issue_staff_numbers_not_in_base = set()
+    issue_staff_numbers_fte_not_100_in_expand = []
+
+    unique_staff_in_base = {}
+    unique_staff_in_expand = {}
+    for k, v in clean_base_dict.items():
+        unique_staff_in_base[str(k)] = v["FTE"]
+
     for k, v in clean_expand_dict.items():
+
         staff_number = str(v["StaffNo"])
+        if staff_number not in unique_staff_in_expand.keys():
+            unique_staff_in_expand[staff_number] = v["Allocated Percentage"]
+        else:
+            unique_staff_in_expand[staff_number] += v["Allocated Percentage"]
+
         if DEBUG:
             print(f"Processing expand record for staff number {staff_number}")
             print(v)
@@ -723,9 +739,9 @@ def process_update_database(
             staff_rank_category[staff_number] = clean_base_dict[staff_number][
                 "Staff Category"
             ]
-            # unique_staff_in_base.add(staff_number)
             del clean_base_dict[staff_number]
-        if staff_number in unique_staff_in_base:
+
+        if staff_number in unique_staff_in_base.keys():
             if (
                 v["Rank"] in unique_rank_cat_dict.keys()
                 and unique_rank_cat_dict[v["Rank"]] in staff_category_order_dict.keys()
@@ -739,7 +755,8 @@ def process_update_database(
                     ],
                     "cost centre code": str(v["CCode"]).zfill(3),
                     "cost centre name": cost_centre_info[str(v["CCode"]).zfill(3)],
-                    "allocation": v["Allocated Percentage"],
+                    "allocation": v["Allocated Percentage"]
+                    * unique_staff_in_base[staff_number],
                 }
                 expanded_entries.append(expanded_item)
 
@@ -748,7 +765,7 @@ def process_update_database(
             else:
                 return ReturnCodes.ERROR_FILE_DATA_ERROR
         else:
-
+            issue_staff_numbers_not_in_base.add(staff_number)
             # found record in expand data but not in base data. It is not counted as error, just skip it.
             if DEBUG:
                 print(
@@ -779,6 +796,35 @@ def process_update_database(
     if DEBUG:
         print(f"Total records processed: {len(result_df.index)}")
         print(result_df)
+
+    result_dict = {"hr_fte_df": result_df}
+    for k, v in unique_staff_in_expand.items():
+        if v != 1.0:
+            issue_staff_numbers_fte_not_100_in_expand.append(f"{k}({v})")
+            if DEBUG:
+                print(
+                    f"Staff number {k} has total FTE allocation of {v} in expand data."
+                )
+    result_dict["issue_staff_numbers_not_in_base"] = sorted(
+        list(issue_staff_numbers_not_in_base)
+    )
+    result_dict["issue_expand_staff_fte_not_1"] = (
+        issue_staff_numbers_fte_not_100_in_expand
+    )
+    if DEBUG:
+        print(
+            f"Staff numbers with FTE not equal to 1 in expand data: {issue_staff_numbers_fte_not_100_in_expand}"
+        )
+        print(
+            f"Staff numbers not in base: {result_dict['issue_staff_numbers_not_in_base']}"
+        )
+
+    return result_dict
+
+
+def generate_or_update_database(
+    reportname: str, month_of_data_str: str, result_df: pd.DataFrame
+):
 
     if os.path.exists(reportname):
         with pd.ExcelWriter(f"{reportname}", mode="a") as writer:
