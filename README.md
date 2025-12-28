@@ -12,3 +12,5 @@
 ### Output file:
 - Department summary report generated.
 
+### Data Exception
+- FTE in Override Sheet for each staff number in Base Sheet may not be aligned 

@@ -1,15 +1,43 @@
+"""
+Module provide all the necessary functions for data processing which are consumed by main program
+
+Functions:
+exported class:
+- ReturnCodes
+
+exported functions:
+- process_update_database
+- ReturnCodes
+- generate_department_fte_summary_report
+- generate_department_headcount_summary_report
+- generate_department_fte_costcentre_report
+
+local functions:
+- get_available_periods
+- prepare_department_fte_trend_report
+- prepare_department_headcount_trend_report
+- prepare_department_fte_costcentre_report
+- generate_pdf_report
+- check_file_header
+
+"""
+
 import pandas as pd
 import os
-import calendar
 from markdown_pdf import MarkdownPdf, Section
 from py_markdown_table.markdown_table import markdown_table
 from enum import Enum
 
+# set DEBUG True to display verbose debug information
 DEBUG = False
+
+# set the maximum number of months in report
 MAX_NUMBER_MONTH_IN_REPORT = 12
 
 
 class ReturnCodes(Enum):
+    """Enumeration for return codes"""
+
     ERROR_PROGRAM = -10
     ERROR_FILE_DATA_ERROR = -4
     ERROR_FILE_LOADING = -2
@@ -20,14 +48,14 @@ class ReturnCodes(Enum):
     OK_UPDATE_DATABASE = 3
 
 
-RETURN_CODE = Enum("Color", [("RED", 1), ("GREEN", 2), ("BLUE", 3)])
-
+# set dataframe display format for float to 2 decimal places with $ sign
 pd.options.display.float_format = "${:,.2f}".format
 
 
 def get_available_periods(
     data_available: list, start_year: int, start_month: int, max_number_of_month: int
 ):
+    """Return data_available list based on start year/month and max number of months"""
 
     if max_number_of_month < 1 or max_number_of_month > 12:
         return ReturnCodes.ERROR_PROGRAM
@@ -64,11 +92,12 @@ def prepare_department_fte_trend_report(
     start_month: int,
     max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Return markdown report content and css for fte trend report generation from database file"""
 
     try:
         # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
-    except Exception as e:
+    except Exception:
         return ReturnCodes.ERROR_FILE_LOADING
         # raise f"Error loading file {data_file_name}: {e}"
 
@@ -121,8 +150,6 @@ def prepare_department_fte_trend_report(
         results_order_df.set_index(["rank category", "staff category order"]),
         how="inner",
     )
-    # sorted_result_df = pd.merge(result, results_order_df, on='rank category', how='inner')
-    # sorted_result_df.set_index('staff category order', inplace=True)
 
     sorted_result_df.reset_index(inplace=True)
     sorted_result_df.set_index("staff category order", inplace=True)
@@ -149,16 +176,6 @@ def prepare_department_fte_trend_report(
     )
     markdown = markdown.replace("nan", "-")
 
-    '''
-    css = """
-        table {width: 100%; border-collapse: collapse;}
-        thead th {background-color: #4CAF50;color: white;padding: 5px;text-align: center;border: 1px solid #ddd;border-collapse: collapse;}
-        tbody td:first-child { text-align: left; font-weight: bold;border-collapse: collapse;}
-        tbody td { padding: 10px 20px; text-align: center; border-collapse: collapse;}
-        h2 {text-align: center; background-color: #4CAF50;}
-    """
-    '''
-
     if len(available_periods) <= 6:
         cell_y_padding = "10px"
         header_cell_y_padding = "25px"
@@ -175,7 +192,6 @@ def prepare_department_fte_trend_report(
         font_size = "9px"
         padding = "2px"
     table_header_bg_color = "#4CAF50"
-    # table_header_bg_color = 'white'
     title_bg_color = "#4CAF50"
     css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding} }} thead th {{background-color: {table_header_bg_color};color: white;text-align: center;border: 1px solid #ddd;border-collapse: collapse; padding: {padding} {header_cell_y_padding}}} tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse;}} tbody td {{ text-align: center; border-collapse: collapse;}} h2 {{text-align: center; background-color: {title_bg_color};}}"
 
@@ -191,11 +207,12 @@ def prepare_department_headcount_trend_report(
     start_month: int,
     max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Return markdown report content and css for department headcount trend report generation from database file"""
 
     try:
         # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
-    except Exception as e:
+    except Exception:
         return ReturnCodes.ERROR_FILE_LOADING
 
     available_periods = get_available_periods(
@@ -270,16 +287,6 @@ def prepare_department_headcount_trend_report(
     )
     markdown = markdown.replace("nan", "-")
 
-    '''
-    css = """
-        table {width: 100%; border-collapse: collapse;}
-        thead th {background-color: #4CAF50;color: white;padding: 5px;text-align: center;border: 1px solid #ddd;border-collapse: collapse;}
-        tbody td:first-child { text-align: left; font-weight: bold;border-collapse: collapse;}
-        tbody td { padding: 10px 20px; text-align: center; border-collapse: collapse;}
-        h2 {text-align: center; background-color: #4CAF50;}
-    """
-    '''
-
     if len(available_periods) <= 6:
         cell_y_padding = "10px"
         header_cell_y_padding = "25px"
@@ -312,11 +319,12 @@ def prepare_department_fte_costcentre_report(
     start_month: int,
     max_number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Return markdown report content and css for department fte report generation from database file"""
 
     try:
         # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
-    except Exception as e:
+    except Exception:
         return ReturnCodes.ERROR_FILE_LOADING
 
     available_periods = get_available_periods(
@@ -394,25 +402,16 @@ def prepare_department_fte_costcentre_report(
         sorted_result_df.reset_index(inplace=True)
         sorted_result_df.set_index("staff category order", inplace=True)
 
-        # print(f"sorted_result_df before set_index and sort index {sorted_result_df}")
         sorted_result_df.sort_index(inplace=True)
-        # print(f"sorted_result_df before set_index and after sort index {sorted_result_df}")
 
         sorted_result_df.set_index("rank category", inplace=True)
 
-        # print(f"sorted_result_df after set_index and sort index {sorted_result_df}")
-        # print(sorted_result_df.columns)
-        # print(sorted_result_df.index)
-
         sorted_result_df["rank"] = sorted_result_df["rank"].astype("string")
-        # print(sorted_result_df)
 
         sorted_result_df.loc["Total"] = sorted_result_df.sum(numeric_only=True)
 
         sorted_result_df.reset_index(inplace=True)
-        # print(f"sorted_result_df after reset index {sorted_result_df}")
-        # print(sorted_result_df.columns)
-        # print(sorted_result_df.index)
+
         sorted_result_dict = (
             sorted_result_df.round(2).astype(str).to_dict(orient="index")
         )
@@ -466,26 +465,9 @@ def prepare_department_fte_costcentre_report(
 
 
 def generate_pdf_report(report_name: str, content: list, title: str = "Report"):
-    '''
-    text = """# Section with Table
+    """Generate PDF report from markdown content and css list input from prepare report functions"""
 
-    |TableHeader1|TableHeader2|
-    |--|--|
-    |Text1|Text2|
-    |ListCell|<ul><li>FirstBullet</li><li>SecondBullet</li></ul>|
-    """
-    '''
-    # css = "table, th, td {border: 1px solid black;}"
-
-    # header= f'<h1 style="text-align: center;">{title}</h1>'
     header = f"## {title}"
-
-    # header2 = f'### Cost Centre : {xxx}'
-
-    # header = f"##{title} XXX\n###Hello World\n\n"
-    # header = "##Head2\n\n### <a id='head3'></a>Head3\n\n"
-    # header = "##Head2\n"
-    # header = 'Head'
 
     pdf = MarkdownPdf()
     for c in content:
@@ -497,9 +479,8 @@ def generate_pdf_report(report_name: str, content: list, title: str = "Report"):
 
 
 def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
-    """
-    check header are available in dataframe
-    """
+    """check header are available in dataframe"""
+
     missing_headers = []
     for h in expected_headers:
         if h not in df.columns:
@@ -511,36 +492,7 @@ def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
 def process_update_database(
     excelfile: str, month_of_data_str: str, reportname: str
 ) -> int:
-    """
-    This function is used for Hospital Data Processing of HR / Cost Centre Allocation.
-
-    Process the input Excel file which has two sheets by expanding the data in sheet1 with sheet2
-
-    Parameters:
-    excelfile (str): Path to the Excel file containing the data, with at least 3 sheets
-
-    Returns:
-    error message or success message which is "OK"
-    """
-
-    # read whole file:
-    """
-    ### want to read all sheet but in vains as different sheets has differ header row number
-    
-    try:
-        file_dict = pd.read_excel(excelfile,sheet_name=None,header=0,dtype=object)
-    except Exception as e:
-        raise f"Error loading file {excelfile}: {e}"
-    
-    
-    file_dict_keys_list = []
-    for key in file_dict.keys():
-        file_dict_keys_list.append(key)
-        
-    if len(file_dict_keys_list) < 3:
-        raise f"Data file should have at least 3 sheets"
-    
-    """
+    """Process the source data file and update the database file"""
 
     # read sheet 1
     try:
@@ -548,7 +500,7 @@ def process_update_database(
             excelfile, sheet_name=0, header=0, dtype=object
         )
         # file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0)
-    except Exception as e:
+    except Exception:
         return ReturnCodes.ERROR_FILE_ERROR
 
     header = [
@@ -603,7 +555,7 @@ def process_update_database(
     try:
         # file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
         file_expand_data_df = pd.read_excel(excelfile, sheet_name=1, header=1)
-    except Exception as e:
+    except Exception:
 
         return ReturnCodes.ERROR_FILE_ERROR
 
@@ -634,7 +586,7 @@ def process_update_database(
     clean_expand_data_df = new_clean_expand_data_df
 
     if DEBUG:
-        print(f"clean_expand_data_df ------ ")
+        print("clean_expand_data_df ------ ")
         print(clean_expand_data_df.head(5))
 
     # read sheet 3, cost center information
@@ -643,7 +595,7 @@ def process_update_database(
             excelfile, sheet_name=2, header=0, dtype=object
         )
         # file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0)
-    except Exception as e:
+    except Exception:
         # print(f"Error loading base sheet 3: {e}")
         return ReturnCodes.ERROR_FILE_ERROR
 
@@ -692,7 +644,7 @@ def process_update_database(
             excelfile, sheet_name=3, header=0
         )
         has_staff_category_order_data = True
-    except Exception as e:
+    except Exception:
         has_staff_category_order_data = False
 
     if has_staff_category_order_data:
@@ -751,7 +703,7 @@ def process_update_database(
     clean_base_data_df = clean_base_data_df.set_index("StaffNo")
     clean_base_dict = clean_base_data_df.to_dict(orient="index")
     if DEBUG:
-        print(f"clean_base_dict ------ ")
+        print("clean_base_dict ------ ")
         print(clean_base_dict)
     # clean_base_dict has key as StaffNo, value as dict of other columns
     clean_expand_dict = clean_expand_data_df.to_dict(orient="index")
@@ -766,7 +718,8 @@ def process_update_database(
             print(f"Processing expand record for staff number {staff_number}")
             print(v)
         if staff_number in clean_base_dict.keys():
-            print(f"Found staff number {staff_number} in base data.")
+            if DEBUG:
+                print(f"Found staff number {staff_number} in base data.")
             staff_rank_category[staff_number] = clean_base_dict[staff_number][
                 "Staff Category"
             ]
@@ -827,7 +780,7 @@ def process_update_database(
         print(f"Total records processed: {len(result_df.index)}")
         print(result_df)
 
-    if os.path.exists(reportname) == True:
+    if os.path.exists(reportname):
         with pd.ExcelWriter(f"{reportname}", mode="a") as writer:
             # df1.to_excel(writer, sheet_name='Sheet_name_3')
             workBook = writer.book
@@ -857,6 +810,8 @@ def generate_department_fte_summary_report(
     start_month: int,
     number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Generate department FTE summary report from database file"""
+
     department_fte_trend_content = prepare_department_fte_trend_report(
         fte_data_file_name, start_year, start_month, number_of_month
     )
@@ -890,6 +845,8 @@ def generate_department_headcount_summary_report(
     start_month: int,
     number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Generate department headcount summary report from database file"""
+
     department_headcount_trend_content = prepare_department_headcount_trend_report(
         fte_data_file_name, start_year, start_month, number_of_month
     )
@@ -923,6 +880,8 @@ def generate_department_fte_costcentre_report(
     start_month: int,
     number_of_month: int = MAX_NUMBER_MONTH_IN_REPORT,
 ):
+    """Generate department fte report with costcentre breakdown from database file"""
+
     department_fte_costcentre_content = prepare_department_fte_costcentre_report(
         fte_data_file_name, start_year, start_month, number_of_month
     )
@@ -952,33 +911,9 @@ def generate_department_fte_costcentre_report(
 if __name__ == "__main__":
     # Load the dataset
 
-    """
-    report_year = 2025
-    report_month = 7
-    report_period = f"{str(report_year)}{str(report_month).zfill(2)}"
-    report_data_file = "HR_headcount_all.xlsx"
-    #filename = 'Headcount to Finance Dept - Aug 2025.xlsx'
-    #filename = 'Headcount to Finance Dept - Sept 2025.xlsx'
-    #filename = 'Headcount to Finance Dept - Oct 2025.xlsx'
-
-    filename = 'Headcount to Finance Dept - July 2025.xlsx'
-
-    result = process_update_database(filename,report_period,report_data_file)
-    if type(process_update_database) is int and process_update_database <= 0:
-        print(f"Error: Error {ReturnCodes(process_update_database).name} ")
-
-    """
-
     database_file = "HR_FTE_Database.xlsx"
     start_year = 2025
     start_month = 7
-
-    """
-    department_fte_summary_report_file_name = "HR_department_fte_summary_report.pdf"
-    department_fte_summary_report_title = "Yearly Department FTE Trend.pdf"
-    
-    generate_department_fte_summary_report(database_file, department_fte_summary_report_file_name, department_fte_summary_report_title, start_year, start_month, 12)
-    """
 
     department_headcount_summary_report_file_name = (
         "HR_department_headcount_summary_report.pdf"
@@ -993,26 +928,3 @@ if __name__ == "__main__":
         start_month,
         12,
     )
-
-    """
-    department_fte_costcentre_report_file_name = "HR_department_fte_summary_report.pdf"
-    department_fte_costcentre_report_title = "Yearly Department FTE Trend.pdf"
-    
-    generate_department_fte_costcentre_report(database_file, department_fte_costcentre_report_file_name, department_fte_costcentre_report_title, start_year, start_month, 12)
-
-    """
-
-    """
-    period = f"{str(start_year)}" if start_month == 1 else f"{str(start_year)}/{str(start_year+1)}"
-    
-    summary_report_file_name = "HR_headcount_summary_report_main.pdf"
-
-    department_fte_trend_content = prepare_department_fte_trend_report(report_data_file,start_year, start_month,number_of_month=12)
-    
-    if type(department_fte_trend_content) is int:
-        print(f"Error: Error {ReturnCodes(department_fte_trend_content).name} ")
-    else:
-        report_title = "Yearly Department FTE Trend Report " + period   
-        generate_pdf_report(summary_report_file_name,department_fte_trend_content, report_title)
-
-    """

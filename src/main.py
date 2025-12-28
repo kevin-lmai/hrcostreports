@@ -1,15 +1,16 @@
-from dataprocess import process_update_database, ReturnCodes, generate_department_fte_summary_report, generate_department_headcount_summary_report, generate_department_fte_costcentre_report
+""" The main module of the HR Cost Reporting Application using Flet framework """
+
+import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import os
+
+from dataprocess import process_update_database, ReturnCodes, generate_department_fte_summary_report, generate_department_headcount_summary_report, generate_department_fte_costcentre_report
 
 import flet
 from flet import (
-    AppBar,
     Column,
     Row,
     Container,
-    IconButton,
     Icons,
     NavigationRail,
     NavigationRailDestination,
@@ -17,15 +18,9 @@ from flet import (
     Text,
     Card,
     Colors,
-    Divider,
-    PopupMenuButton,
-    PopupMenuItem,
     ElevatedButton,
     IconButton,
-    TextField,
-    TextAlign,
     VerticalDivider,
-    Padding,
     FilePicker,
     FilePickerResultEvent,
     Theme,
@@ -40,8 +35,6 @@ data_directory = None
 database_file_directory = None
 database_file_name = None
 fte_data_date = None
-
-
 
 # Reports Generation related global variables 
 database_file_saved = False
@@ -61,6 +54,8 @@ department_fte_costcentre_report_title = "Yearly Department FTE (Cost Centres) T
 
 
 def init_data_upload_setup():
+    """ Initialize the data upload, database setup parameters """
+
     global data_name
     global data_directory
     global database_file_directory
@@ -130,20 +125,27 @@ class DesktopAppLayout(Row):
         self.page.title = title
 
     def select_page(self, page_number):
+        """ Select the page to be displayed by page number index """
         self.navigation_rail.selected_index = page_number
         self._change_displayed_page()
 
     def _navigation_change(self, e):
+        """ Handle navigation rail index change event """
+        
         self._change_displayed_page()
         self.page.update()
 
     def _change_displayed_page(self):
+        """ Change the displayed page based on selected navigation rail index """
+        
         page_number = self.navigation_rail.selected_index
         for i, content_page in enumerate(self.content_area.controls):
             # update selected page
             content_page.visible = page_number == i
 
     def build_navigation_rail(self):
+        """ Build the navigation rail for the desktop app layout """
+
         return NavigationRail(
             selected_index=0,
             label_type="none",
@@ -157,45 +159,38 @@ class DesktopAppLayout(Row):
         
     
     def update_destinations(self):
+        """ Update the navigation rail destinations """
+
         self.navigation_rail.destinations = self.navigation_items
         self.navigation_rail.label_type = "all"
 
     def handle_resize(self, e):
+        """ Handle the page resize event """
         pass
 
     def set_content(self):
+        """ Set the content layout of the desktop app """
+
         self.controls = [self.menu_panel, VerticalDivider(width=1, color=Colors.RED)  , self.content_area]
         self.update_destinations()
         self.navigation_rail.extended = self._menu_extended
         self.menu_panel.visible = self._panel_visible
 
     def is_portrait(self) -> bool:
+        """ Determine if the window/display is in portrait orientation """
+
         # Return true if window/display is narrow
         # return self.page.window_height >= self.page.window_width
         return self.page.height >= self.page.width
 
     def is_landscape(self) -> bool:
+        """ Determine if the window/display is in landscape orientation """
+        
         # Return true if window/display is wide
         return self.page.width > self.page.height
 
-def create_page(title: str, body: str, page: Page):
-        
-    return Row(
-        controls=[
-            Column(
-                horizontal_alignment="stretch",
-                controls=[
-                    Card(content=Container(Text(title, weight="bold"), padding=8, bgcolor=Colors.RED)),
-                    Text(body,bgcolor=Colors.BLUE,),
-                ],
-                expand=True,
-            ),
-        ],
-        expand=True,
-    )
-
-
 def main(page: Page):
+    """ The main function to setup Flet application page and layout """
     
     page.window.width = 900        # window's width is 200 px
     page.window.height = 450       # window's height is 200 px
@@ -228,6 +223,7 @@ def main(page: Page):
                         datafile_upload_button_prompt,
                         icon=Icons.UPLOAD_FILE,
                         on_click=lambda _: pick_data_files_dialog.pick_files(
+                            initial_directory=data_directory,
                             allow_multiple=False
                         ),                        
                     )
@@ -236,12 +232,15 @@ def main(page: Page):
                         optional_report_upload_button_prompt,
                         icon=Icons.ADD_BOX,
                         on_click=lambda _: pick_optional_report_files_dialog.pick_files(
+                            initial_directory=data_directory,
                             allow_multiple=False
                         ),
                         disabled=True,
                     )
                     
     def update_database(e):
+        """ function to update or create database file from uploaded data file """
+
         global database_file_saved
         global saved_database_file_directory
         global saved_database_name
@@ -265,17 +264,17 @@ def main(page: Page):
             generate_reports_button.disabled = False
             status_text_generate_reports.value = generate_report_status_content()
         elif result == ReturnCodes.ERROR_FILE_ERROR:
-            status_text_fte_upload.value = f"Oops!!\nInput file has error. Please check Headers and Sheets"
+            status_text_fte_upload.value = "Oops!!\nInput file has error. Please check Headers and Sheets"
         elif result == ReturnCodes.ERROR_FILE_DATA_ERROR:
-            status_text_fte_upload.value = f"Oops!!\nInput file has duplicated staff ID or Error in Category Order"
+            status_text_fte_upload.value = "Oops!!\nInput file has duplicated staff ID or Error in Category Order"
         elif result == ReturnCodes.ERROR_FILE_LOADING:
-            status_text_fte_upload.value = f"Oops!!\nInput file cannot be loaded"
+            status_text_fte_upload.value = "Oops!!\nInput file cannot be loaded"
         elif result == ReturnCodes.ERROR_PROGRAM:
-            status_text_fte_upload.value = f"Oops!!\nPossible program error occurred"
+            status_text_fte_upload.value = "Oops!!\nPossible program error occurred"
         elif result == ReturnCodes.ERROR:
-            status_text_fte_upload.value = f"Oops!!\nSome error occurred"
+            status_text_fte_upload.value = "Oops!!\nSome error occurred"
         else:
-            status_text_fte_upload.value = f"Oops!!\nUnknown error occurred"        
+            status_text_fte_upload.value = "Oops!!\nUnknown error occurred"        
             
         page.update()
     
@@ -287,6 +286,8 @@ def main(page: Page):
                     )
 
     def reset_upload_fte(e):
+        """ function to reset FTE data upload process to initial state"""
+
         init_data_upload_setup()
         fte_data_upload_button.text = datafile_upload_button_prompt        
         fte_data_month_text.value = fte_data_date.strftime("%Y / %m")
@@ -304,7 +305,8 @@ def main(page: Page):
 ### setup page 2 - reports generation
 
     def generate_report_status_content():
-        #global database_file_saved
+        """ Prepare the status content for reports generation page """
+
         if database_file_saved:
             return f"Database file at {saved_database_file_directory}\nnamed {saved_database_name} is set."
         else:
@@ -315,6 +317,7 @@ def main(page: Page):
 
 
     def init_generate_report_setup():
+        """ Initialize the reports generation setup parameters """
 
         global report_start_date
         global saved_database_file_directory
@@ -342,13 +345,15 @@ def main(page: Page):
                         database_file_upload_button_prompt,
                         icon=Icons.ADD_BOX,
                         on_click=lambda _: pick_report_files_dialog.pick_files(
+                            initial_directory=data_directory,
                             allow_multiple=False
                         ),
                     )
 
-# def generate_summary_report(fte_data_file_name: str, summary_report_file_name: str, report_title: str, start_year: int, start_month: int, number_of_month: i):
 
     def generate_reports(e):
+        """ function to generate reports from saved database file """
+
         database_file_name = saved_database_file_directory + saved_database_name
         timestamp = str(report_start_date.year) + str(report_start_date.month).zfill(2) + "_" + str(report_start_date.hour).zfill(2) + str(report_start_date.minute).zfill(2)
         
@@ -405,10 +410,13 @@ def main(page: Page):
                         "Generate Reports",
                         icon=Icons.FORWARD,
                         on_click=generate_reports,
-                        disabled=database_file_saved == False, 
-                    )    
+                        #disabled=database_file_saved == False,
+                        disabled= not database_file_saved, 
+                    )   
 
     def reset_generate_reports(e):
+        """ function to reset report generation process to initial state"""
+
         global database_file_saved
         global saved_database_file_directory
         global saved_database_name
@@ -431,7 +439,8 @@ def main(page: Page):
 
         
     def pick_data_files_result(e: FilePickerResultEvent):
-        
+        """ function to handle the selected data file from file picker dialog """
+
         global data_name
         global data_directory
         global database_file_directory
@@ -439,8 +448,8 @@ def main(page: Page):
         global datafile_upload_button_prompt
         
         selected_file_result = e
-        if selected_file_result.files == None or len(selected_file_result.files) == 0:
-            status_text_fte_upload.value = f"Wrong file or no file. Please Select FTE Monthly Data File" 
+        if selected_file_result.files is None or len(selected_file_result.files) == 0:
+            status_text_fte_upload.value = "Wrong file or no file. Please Select FTE Monthly Data File" 
         else:
             result = selected_file_result.files.pop()
             name = result.name
@@ -459,14 +468,15 @@ def main(page: Page):
         page.update()
                 
     def optional_report_files_result(e: FilePickerResultEvent):
-        
+        """ function to handle the selected optional database file from file picker dialog """
+
         selected_file_result = e
         global data_name
         global data_directory
         global database_file_directory
         global database_file_name
-        if selected_file_result.files == None or len(selected_file_result.files) == 0:
-            status_text_fte_upload.value = f"Wrong Upload or no file. Please Select Database File" 
+        if selected_file_result.files is None or len(selected_file_result.files) == 0:
+            status_text_fte_upload.value = "Wrong Upload or no file. Please Select Database File" 
         else:
             result = selected_file_result.files.pop()
             name = result.name
@@ -480,33 +490,32 @@ def main(page: Page):
         page.update() 
 
     def report_files_result(e: FilePickerResultEvent):
+        """ function to handle the selected database file from file picker dialog """
             
-            global database_file_saved
-            global saved_database_file_directory
-            global saved_database_name
+        global database_file_saved
+        global saved_database_file_directory
+        global saved_database_name
+        
+        selected_file_result = e
+        if selected_file_result.files is None or len(selected_file_result.files) == 0:
+            database_file_saved = False
+            saved_database_name = None
+            saved_database_file_directory = None                
+            generate_reports_button.disabled = True
+            status_text_generate_reports.value = generate_report_status_content()
+            #status_text_generate_reports.value = f"Wrong Upload or no file. Please Select Database File" 
+        else:
+            result = selected_file_result.files.pop()
+            name = result.name
+            path = result.path
+            directory = path.replace(name, "")
             
-            selected_file_result = e
-
-            if selected_file_result.files == None or len(selected_file_result.files) == 0:
-
-                database_file_saved = False
-                saved_database_name = None
-                saved_database_file_directory = None                
-                generate_reports_button.disabled = True
-                status_text_generate_reports.value = generate_report_status_content()
-                #status_text_generate_reports.value = f"Wrong Upload or no file. Please Select Database File" 
-            else:
-                result = selected_file_result.files.pop()
-                name = result.name
-                path = result.path
-                directory = path.replace(name, "")
-                
-                database_file_saved = True
-                saved_database_name = name
-                saved_database_file_directory = directory
-                generate_reports_button.disabled = False
-                status_text_generate_reports.value = generate_report_status_content()
-            page.update() 
+            database_file_saved = True
+            saved_database_name = name
+            saved_database_file_directory = directory
+            generate_reports_button.disabled = False
+            status_text_generate_reports.value = generate_report_status_content()
+        page.update() 
 
 
 
@@ -520,6 +529,7 @@ def main(page: Page):
 
     
     def minus_fte_data_date_click(e):
+        """ function to decrease FTE data date by one month when minus button clicked """
         global fte_data_date
         fte_data_date = fte_data_date - relativedelta(months=1)
         fte_data_month_text.value = fte_data_date.strftime("%Y / %m")
@@ -527,6 +537,8 @@ def main(page: Page):
         page.update()
         
     def plus_fte_data_date_click(e):
+        """ function to increase FTE data date by one month when plus button clicked """
+
         global fte_data_date
         fte_data_date = fte_data_date + relativedelta(months=1)
         fte_data_month_text.value = fte_data_date.strftime("%Y / %m")
@@ -534,12 +546,16 @@ def main(page: Page):
         page.update()
     
     def minus_report_start_month_click(e):
+        """ function to decrease report start month by one month when minus button clicked """
+
         global report_start_date
         report_start_date = report_start_date - relativedelta(months=1)
         generate_report_start_month_text.value = report_start_date.strftime("%Y / %m")
         page.update()
         
     def plus_report_start_month_click(e):
+        """ function to increase report start month by one month when plus button clicked """
+
         global report_start_date
         report_start_date = report_start_date + relativedelta(months=1)
         generate_report_start_month_text.value = report_start_date.strftime("%Y / %m")
@@ -614,7 +630,6 @@ def main(page: Page):
         page=page,
         pages=pages,
         title="HR Cost Reporting",
-        #window_size=(320, 120),
     )
 
     page.bgcolor = Colors.WHITE
