@@ -6,11 +6,12 @@ from dateutil.relativedelta import relativedelta
 
 from dataprocess import (
     process_source_data,
-    generate_or_update_database,
+    generate_excel_fr_df,
     ReturnCodes,
     generate_department_fte_summary_report,
     generate_department_headcount_summary_report,
     generate_department_fte_costcentre_report,
+    HEADER_SEPARATOR,
 )
 
 import flet
@@ -50,15 +51,18 @@ saved_database_file_directory = None
 saved_database_name = None
 
 report_start_date = None
+
+company_name = "CUHK Medical Centre Limited"
+financial_year_header = "Financial Year: "
+
 department_fte_summary_report_file_name = "HR_department_fte_summary_report"
-department_fte_summary_report_title = "Yearly Department FTE Trend"
+department_fte_summary_report_title = "Full Time Equivalent (FTE) - Total"
 
 department_headcount_summary_report_file_name = "HR_department_headcount_summary_report"
-department_headcount_summary_report_title = "Yearly Department Headcount Trend"
+department_headcount_summary_report_title = "Headcount - Total"
 
 department_fte_costcentre_report_file_name = "HR_department_fte_costcentres_report"
-department_fte_costcentre_report_title = "Yearly Department FTE (Cost Centres) Trend"
-
+department_fte_costcentre_report_title = "Full Time Equivalent (FTE) by Department"
 
 def init_data_upload_setup():
     """Initialize the data upload, database setup parameters"""
@@ -72,7 +76,7 @@ def init_data_upload_setup():
     data_name = None
     data_directory = None
     database_file_directory = None
-    database_file_name = "HR_FTE_Database.xlsx"
+    database_file_name = "HR_FTE_Database"
     fte_data_date = datetime.now() - relativedelta(months=1)
 
 
@@ -262,8 +266,9 @@ def main(page: Page):
         datafile = data_directory + data_name
         report_file = database_file_directory + database_file_name
         result_dict = process_source_data(datafile)
-        result = generate_or_update_database(
-            report_file, data_period, result_dict["hr_fte_df"]
+        input_excel_data_dict = {data_period : {'data' : result_dict["hr_fte_df"]}}
+        result = generate_excel_fr_df(
+            report_file, input_excel_data_dict
         )
         if result == ReturnCodes.OK_UPDATE_DATABASE:
             status_text_fte_upload.value = f"Congratulation!!\nDatabase file {database_file_directory}{database_file_name} was updated."
@@ -393,102 +398,116 @@ def main(page: Page):
         )
 
         adj_department_fte_summary_report_file_name = (
-            department_fte_summary_report_file_name + "_" + timestamp + ".pdf"
+            department_fte_summary_report_file_name + "_" + timestamp
         )
         adj_department_fte_summary_report_file_name = (
             saved_database_file_directory + adj_department_fte_summary_report_file_name
         )
 
-        if (
-            generate_department_fte_summary_report(
+        report_header = f"{company_name}{HEADER_SEPARATOR}{department_fte_summary_report_title}{HEADER_SEPARATOR}{financial_year_header}"
+        
+        
+        if generate_department_fte_summary_report(
                 database_file_name,
                 adj_department_fte_summary_report_file_name,
-                department_fte_summary_report_title,
+                report_header,
                 report_start_date.year,
                 report_start_date.month,
-            )
-            == ReturnCodes.OK
-        ):
-
-            if os.path.exists(adj_department_fte_summary_report_file_name):
-                status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_fte_summary_report_file_name} was generated."
+            ) == ReturnCodes.OK:
+            
+            pdf = adj_department_fte_summary_report_file_name + ".pdf"
+            excel = adj_department_fte_summary_report_file_name + ".xlsx"
+            if os.path.exists(pdf) and os.path.exists(excel):
+                status_text_generate_reports.value = f"Congratulation!!\nReport {adj_department_fte_summary_report_file_name} (pdf / xlsx) was generated."
             else:
-                status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} was not successful."
+                status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} (pdf / xlsx) was not successful."
         else:
-            status_text_generate_reports.value = f"Oops\nDatabase file has problem. Report named {adj_department_fte_summary_report_file_name} not generated"
+            status_text_generate_reports.value = f"Oops\nDatabase file has problem. Report named {adj_department_fte_summary_report_file_name} (pdf / xlsx) not generated"
 
         adj_department_headcount_summary_report_file_name = (
-            department_headcount_summary_report_file_name + "_" + timestamp + ".pdf"
+            department_headcount_summary_report_file_name + "_" + timestamp
         )
         adj_department_headcount_summary_report_file_name = (
             saved_database_file_directory
             + adj_department_headcount_summary_report_file_name
         )
 
-        if (
-            generate_department_headcount_summary_report(
+        report_header = f"{company_name}{HEADER_SEPARATOR}{department_headcount_summary_report_title}{HEADER_SEPARATOR}{financial_year_header}"
+
+        if generate_department_headcount_summary_report(
                 database_file_name,
                 adj_department_headcount_summary_report_file_name,
-                department_headcount_summary_report_title,
+                report_header,
                 report_start_date.year,
                 report_start_date.month,
-            )
-            == ReturnCodes.OK
-        ):
-            if os.path.exists(adj_department_headcount_summary_report_file_name):
+            ) == ReturnCodes.OK:
+            
+            pdf = adj_department_headcount_summary_report_file_name + ".pdf"
+            excel = adj_department_headcount_summary_report_file_name + ".xlsx"
+            if os.path.exists(pdf) and os.path.exists(excel):
+
+    
+            #if os.path.exists(adj_department_headcount_summary_report_file_name):
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
-                    + f"Congratulation!!\nReport {adj_department_headcount_summary_report_file_name} was generated."
+                    + f"Congratulation!!\nReport {adj_department_headcount_summary_report_file_name} (pdf / xlsx) was generated."
                 )
             else:
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
-                    + f"Oops\nGenerating report named {adj_department_headcount_summary_report_file_name} was not successful."
+                    + f"Oops\nGenerating report named {adj_department_headcount_summary_report_file_name} (pdf / xlsx) was not successful."
                 )
         else:
             status_text_generate_reports.value = (
                 status_text_generate_reports.value
                 + "\n"
-                + f"Oops\nDatabase file has problem. Report named {adj_department_headcount_summary_report_file_name} not generated"
+                + f"Oops\nDatabase file has problem. Report named {adj_department_headcount_summary_report_file_name} (pdf / xlsx) not generated"
             )
 
         adj_department_fte_costcentre_report_file_name = (
-            department_fte_costcentre_report_file_name + "_" + timestamp + ".pdf"
+            department_fte_costcentre_report_file_name + "_" + timestamp
         )
         adj_department_fte_costcentre_report_file_name = (
             saved_database_file_directory
             + adj_department_fte_costcentre_report_file_name
         )
 
+        report_header = f"{company_name}{HEADER_SEPARATOR}{department_fte_costcentre_report_title}{HEADER_SEPARATOR}{financial_year_header}"
+
         if (
             generate_department_fte_costcentre_report(
                 database_file_name,
                 adj_department_fte_costcentre_report_file_name,
-                department_fte_costcentre_report_title,
+                report_header,
                 report_start_date.year,
                 report_start_date.month,
             )
             == ReturnCodes.OK
         ):
-            if os.path.exists(adj_department_fte_costcentre_report_file_name):
+            
+            pdf = adj_department_fte_costcentre_report_file_name + ".pdf"
+            excel = adj_department_fte_costcentre_report_file_name + ".xlsx"
+            if os.path.exists(pdf) and os.path.exists(excel):
+                
+            #if os.path.exists(adj_department_fte_costcentre_report_file_name):
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
-                    + f"Congratulation!!\nReport {adj_department_fte_costcentre_report_file_name} was generated."
+                    + f"Congratulation!!\nReport {adj_department_fte_costcentre_report_file_name} (pdf / xlsx) was generated."
                 )
             else:
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
-                    + f"Oops\nGenerating report named {adj_department_fte_costcentre_report_file_name} was not successful."
+                    + f"Oops\nGenerating report named {adj_department_fte_costcentre_report_file_name} (pdf / xlsx) was not successful."
                 )
         else:
             status_text_generate_reports.value = (
                 status_text_generate_reports.value
                 + "\n"
-                + f"Oops\nDatabase file has problem. Report named {adj_department_fte_costcentre_report_file_name} not generated"
+                + f"Oops\nDatabase file has problem. Report named {adj_department_fte_costcentre_report_file_name} (pdf / xlsx) not generated"
             )
 
         page.update()
