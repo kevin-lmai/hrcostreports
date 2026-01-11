@@ -40,6 +40,7 @@ path = "src"
 dev-dependencies = [
     "flet[all]==0.28.2",
     "pytest>=8.4.2",
+    "ruff>=0.14.10",
 ]
 
 [tool.poetry]
