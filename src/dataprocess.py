@@ -33,7 +33,7 @@ from enum import Enum
 from textwrap import shorten
 
 # set DEBUG True to display verbose debug information, programmer use only
-DEBUG = True
+DEBUG = False
 
 HEADER_SEPARATOR = "!"
 
@@ -57,7 +57,6 @@ def generate_markdown_padding(
 
 
 def report_css_style():
-
     cell_y_padding = "8px"
     header_cell_y_padding = "10px"
     font_size = "9px"
@@ -124,7 +123,6 @@ def header_processing_excel(header_text: str) -> list:
 
 
 def header_processing_pdf(header_text: str, header_mark="##### ") -> str:
-
     header_substrings = header_text.split(HEADER_SEPARATOR)
     processed_header_strings = ""
 
@@ -584,7 +582,16 @@ def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
 
 def process_source_data(excelfile: str) -> int:
     """Process the source excel file and return data dictionary or error code"""
-
+    """
+    
+    Returns:
+        Error: ReturnCodes - error code
+        Success: dict - processed data dictionary
+            key:
+                "hr_fte_df" - database content
+                "issue_staff_numbers_not_in_base" - list of error record
+                "issue_expand_staff_fte_not_1" - list of error record
+    """
     # read sheet 1
     try:
         file_base_data_df = pd.read_excel(
@@ -650,7 +657,6 @@ def process_source_data(excelfile: str) -> int:
         # file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
         file_expand_data_df = pd.read_excel(excelfile, sheet_name=1, header=1)
     except Exception:
-
         return ReturnCodes.ERROR_FILE_ERROR
 
     first_row_df = file_expand_data_df.head(1)
@@ -660,7 +666,6 @@ def process_source_data(excelfile: str) -> int:
     header = ["StaffNo", "Rank", "CCode", "CostCentre", "Allocated Percentage"]
     missing_headers = check_file_header(file_expand_data_df, header)
     if len(missing_headers) > 0:
-
         return ReturnCodes.ERROR_FILE_ERROR
 
     expand_data_df = file_expand_data_df[header]
@@ -716,7 +721,7 @@ def process_source_data(excelfile: str) -> int:
     if DEBUG:
         if file_cost_centre_records_count != clean_cost_centre_records_count:
             print(
-                f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count } 'Disabled' rows removed."
+                f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count} 'Disabled' rows removed."
             )
 
     # get the cost centre information
@@ -789,7 +794,6 @@ def process_source_data(excelfile: str) -> int:
             count += 1
 
     else:
-
         sorted_staff_category_order_list = sorted(
             pd.unique(clean_base_data_df["Staff Category"]).tolist()
         )
@@ -819,7 +823,6 @@ def process_source_data(excelfile: str) -> int:
         unique_staff_in_base[str(k)] = v["FTE"]
 
     for k, v in clean_expand_dict.items():
-
         staff_number = str(v["StaffNo"])
         if staff_number not in unique_staff_in_expand.keys():
             unique_staff_in_expand[staff_number] = v["Allocated Percentage"]
@@ -935,32 +938,75 @@ def generate_excel_fr_df(
         with pd.ExcelWriter(f"{reportname}", mode="w") as writer:
             # df1.to_excel(writer, sheet_name='Sheet_name_3')
             for sheet_name, data_df_dict in input_data_dict.items():
-                
                 clean_name = clean_sheet_name(sheet_name)
-                
+
                 if "header" in data_df_dict.keys():
-                    data_df_dict["header"].style.set_properties(**{'text-align': 'center', 'vertical-align': 'middle'}).to_excel(
-                        writer, sheet_name=f"{clean_name}", index=False, header=False,
+                    data_df_dict["header"].style.set_properties(
+                        **{"text-align": "center", "vertical-align": "middle"}
+                    ).to_excel(
+                        writer,
+                        sheet_name=f"{clean_name}",
+                        index=False,
+                        header=False,
                     )
-                    
 
                     if "data" in data_df_dict.keys():
-                        data_df_dict["data"].style.set_properties(**{'text-align': 'center', 'vertical-align': 'middle'}).to_excel(
+                        data_df_dict["data"].style.set_properties(
+                            **{"text-align": "center", "vertical-align": "middle"}
+                        ).to_excel(
                             writer,
                             sheet_name=f"{clean_name}",
                             index=False,
-                            startrow=writer.sheets[clean_name].max_row, header=True,
+                            startrow=writer.sheets[clean_name].max_row,
+                            header=True,
                         )
                 elif "data" in data_df_dict.keys():
-                    data_df_dict["data"].style.set_properties(**{'text-align': 'center', 'vertical-align': 'middle'}).to_excel(
-                        writer, index=False, sheet_name=f"{clean_name}"
-                    )
-        
+                    data_df_dict["data"].style.set_properties(
+                        **{"text-align": "center", "vertical-align": "middle"}
+                    ).to_excel(writer, index=False, sheet_name=f"{clean_name}")
+
         return ReturnCodes.OK_GEN_NEW_DATABASE
     else:
-        if DEBUG:
-            print(f"report file {reportname} existed")
-        return ReturnCodes.ERROR_FILE_ERROR
+        with pd.ExcelWriter(f"{reportname}", mode='a') as writer:  
+            workBook = writer.book
+
+
+            for sheet_name, data_df_dict in input_data_dict.items():
+                clean_name = clean_sheet_name(sheet_name)
+                
+                try:
+                    workBook.remove(workBook[f"{clean_name}"])
+                except:  # noqa: E722
+                    pass
+                
+                finally:
+
+                    if "header" in data_df_dict.keys():
+                        data_df_dict["header"].style.set_properties(
+                            **{"text-align": "center", "vertical-align": "middle"}
+                        ).to_excel(
+                            writer,
+                            sheet_name=f"{clean_name}",
+                            index=False,
+                            header=False,
+                        )
+
+                        if "data" in data_df_dict.keys():
+                            data_df_dict["data"].style.set_properties(
+                                **{"text-align": "center", "vertical-align": "middle"}
+                            ).to_excel(
+                                writer,
+                                sheet_name=f"{clean_name}",
+                                index=False,
+                                startrow=writer.sheets[clean_name].max_row,
+                                header=True,
+                            )
+                    elif "data" in data_df_dict.keys():
+                        data_df_dict["data"].style.set_properties(
+                            **{"text-align": "center", "vertical-align": "middle"}
+                        ).to_excel(writer, index=False, sheet_name=f"{clean_name}")
+
+        return ReturnCodes.OK_UPDATE_DATABASE
 
 
 def generate_department_fte_summary_report(
@@ -982,7 +1028,7 @@ def generate_department_fte_summary_report(
         period = (
             f"{str(start_year)}"
             if start_month == 1
-            else f"{str(start_year)}/{str(start_year+1)}"
+            else f"{str(start_year)}/{str(start_year + 1)}"
         )
         report_title = f"{report_title} {period}"
 
@@ -1033,12 +1079,11 @@ def generate_department_headcount_summary_report(
         period = (
             f"{str(start_year)}"
             if start_month == 1
-            else f"{str(start_year)}/{str(start_year+1)}"
+            else f"{str(start_year)}/{str(start_year + 1)}"
         )
         report_title = f"{report_title} {period}"
 
         if "md" in department_headcount_trend_content.keys():
-
             generate_pdf_report(
                 summary_report_file_name,
                 department_headcount_trend_content["md"],
@@ -1047,7 +1092,7 @@ def generate_department_headcount_summary_report(
         if "excel_df" in department_headcount_trend_content.keys():
             title_lines = header_processing_excel(f"{report_title}")
             sheet_header = {"title": title_lines}
-            
+
             header_df = pd.DataFrame(sheet_header)
 
             for k, v in department_headcount_trend_content["excel_df"].items():
@@ -1087,7 +1132,7 @@ def generate_department_fte_costcentre_report(
         period = (
             f"{str(start_year)}"
             if start_month == 1
-            else f"{str(start_year)}/{str(start_year+1)}"
+            else f"{str(start_year)}/{str(start_year + 1)}"
         )
         report_title = f"{report_title} {period}"
 
@@ -1100,7 +1145,7 @@ def generate_department_fte_costcentre_report(
         if "excel_df" in department_fte_costcentre_content.keys():
             title_lines = header_processing_excel(f"{report_title}")
             sheet_header = {"title": title_lines}
-            
+
             header_df = pd.DataFrame(sheet_header)
 
             for k, v in department_fte_costcentre_content["excel_df"].items():
@@ -1108,7 +1153,7 @@ def generate_department_fte_costcentre_report(
 
             generate_excel_fr_df(
                 costcentre_report_file_name,
-                department_fte_costcentre_content["excel_df"]
+                department_fte_costcentre_content["excel_df"],
             )
     else:
         if DEBUG:

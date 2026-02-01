@@ -126,7 +126,7 @@ class TestPrepareDepartmentFTETrendReport:
         """Test successful FTE report generation"""
         # Create mock data
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior', 'Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior', 'Senior', 'Junior'],
             'allocation': ['1.0', '0.5', '1.0', '0.5'],
             'staff category order': [1, 2, 1, 2]
         })
@@ -164,12 +164,12 @@ class TestPrepareDepartmentFTETrendReport:
     def test_multiple_periods(self, mock_read_excel):
         """Test with multiple periods"""
         mock_df1 = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior'],
             'allocation': ['1.0', '0.5'],
             'staff category order': [1, 2]
         })
         mock_df2 = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior'],
             'allocation': ['1.5', '0.8'],
             'staff category order': [1, 2]
         })
@@ -186,7 +186,7 @@ class TestPrepareDepartmentFTETrendReport:
     def test_css_formatting_six_periods(self, mock_read_excel):
         """Test CSS formatting for 6 periods"""
         periods = {f'2023{str(i).zfill(2)}': pd.DataFrame({
-            'rank category': ['Senior'],
+            'Staff Category': ['Senior'],
             'allocation': ['1.0'],
             'staff category order': [1]
         }) for i in range(1, 7)}
@@ -202,7 +202,7 @@ class TestPrepareDepartmentFTETrendReport:
     def test_css_formatting_nine_periods(self, mock_read_excel):
         """Test CSS formatting for 9 periods"""
         periods = {f'2023{str(i).zfill(2)}': pd.DataFrame({
-            'rank category': ['Senior'],
+            'Staff Category': ['Senior'],
             'allocation': ['1.0'],
             'staff category order': [1]
         }) for i in range(1, 10)}
@@ -217,7 +217,7 @@ class TestPrepareDepartmentFTETrendReport:
     def test_css_formatting_many_periods(self, mock_read_excel):
         """Test CSS formatting for more than 9 periods"""
         periods = {f'2023{str(i).zfill(2)}': pd.DataFrame({
-            'rank category': ['Senior'],
+            'Staff Category': ['Senior'],
             'allocation': ['1.0'],
             'staff category order': [1]
         }) for i in range(1, 11)}
@@ -237,7 +237,7 @@ class TestPrepareDepartmentHeadcountTrendReport:
     def test_successful_headcount_report_generation(self, mock_read_excel):
         """Test successful headcount report generation"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior', 'Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior', 'Senior', 'Junior'],
             'staff_number': ['001', '002', '003', '004'],
             'staff category order': [1, 2, 1, 2]
         })
@@ -273,7 +273,7 @@ class TestPrepareDepartmentHeadcountTrendReport:
     def test_duplicate_staff_numbers(self, mock_read_excel):
         """Test that duplicate staff numbers are handled correctly"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Senior', 'Senior'],
+            'Staff Category': ['Senior', 'Senior', 'Senior'],
             'staff_number': ['001', '001', '002'],  # Duplicate staff number
             'staff category order': [1, 1, 1]
         })
@@ -289,7 +289,7 @@ class TestPrepareDepartmentHeadcountTrendReport:
     def test_headcount_css_color_scheme(self, mock_read_excel):
         """Test that headcount report uses different color scheme"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior'],
+            'Staff Category': ['Senior'],
             'staff_number': ['001'],
             'staff category order': [1]
         })
@@ -309,8 +309,8 @@ class TestPrepareDepartmentFTECostcentreReport:
     def test_successful_costcentre_report(self, mock_read_excel):
         """Test successful cost centre report generation"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
-            'rank': ['Manager', 'Staff'],
+            'Staff Category': ['Senior', 'Junior'],
+            'Rank': ['Manager', 'Staff'],
             'allocation': ['1.0', '0.5'],
             'cost centre name': ['IT', 'IT'],
             'staff category order': [1, 2]
@@ -330,8 +330,8 @@ class TestPrepareDepartmentFTECostcentreReport:
     def test_multiple_cost_centres(self, mock_read_excel):
         """Test with multiple cost centres"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior', 'Senior', 'Junior'],
-            'rank': ['Manager', 'Staff', 'Manager', 'Staff'],
+            'Staff Category': ['Senior', 'Junior', 'Senior', 'Junior'],
+            'Rank': ['Manager', 'Staff', 'Manager', 'Staff'],
             'allocation': ['1.0', '0.5', '1.5', '0.8'],
             'cost centre name': ['IT', 'IT', 'HR', 'HR'],
             'staff category order': [1, 2, 1, 2]
@@ -370,8 +370,8 @@ class TestPrepareDepartmentFTECostcentreReport:
         periods = {}
         for i in range(1, 12):
             periods[f'2023{str(i).zfill(2)}'] = pd.DataFrame({
-                'rank category': ['Senior'],
-                'rank': ['Manager'],
+                'Staff Category': ['Senior'],
+                'Rank': ['Manager'],
                 'allocation': ['1.0'],
                 'cost centre name': ['IT'],
                 'staff category order': [1]
@@ -389,8 +389,8 @@ class TestPrepareDepartmentFTECostcentreReport:
         periods = {}
         for i in range(1, 13):
             periods[f'2023{str(i).zfill(2)}'] = pd.DataFrame({
-                'rank category': ['Senior'],
-                'rank': ['Manager'],
+                'Staff Category': ['Senior'],
+                'Rank': ['Manager'],
                 'allocation': ['1.0'],
                 'cost centre name': ['IT'],
                 'staff category order': [1]
@@ -406,8 +406,8 @@ class TestPrepareDepartmentFTECostcentreReport:
     def test_costcentre_color_scheme(self, mock_read_excel):
         """Test that cost centre report uses correct color"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior'],
-            'rank': ['Manager'],
+            'Staff Category': ['Senior'],
+            'Rank': ['Manager'],
             'allocation': ['1.0'],
             'cost centre name': ['IT'],
             'staff category order': [1]
@@ -498,7 +498,7 @@ class TestIntegration:
     def test_full_workflow_fte_report(self, mock_read_excel):
         """Test complete workflow for FTE report"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior'],
             'allocation': ['1.0', '0.5'],
             'staff category order': [1, 2]
         })
@@ -519,10 +519,10 @@ class TestIntegration:
     def test_data_consistency_across_functions(self, mock_read_excel):
         """Test that different report functions handle same data consistently"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior'],
             'allocation': ['1.0', '0.5'],
             'staff_number': ['001', '002'],
-            'rank': ['Manager', 'Staff'],
+            'Rank': ['Manager', 'Staff'],
             'cost centre name': ['IT', 'IT'],
             'staff category order': [1, 2]
         })
@@ -546,7 +546,7 @@ class TestEdgeCases:
     def test_nan_values_in_allocation(self, mock_read_excel):
         """Test handling of NaN values in allocation"""
         mock_df = pd.DataFrame({
-            'rank category': ['Senior', 'Junior'],
+            'Staff Category': ['Senior', 'Junior'],
             'allocation': ['1.0', None],
             'staff category order': [1, 2]
         })
@@ -586,14 +586,13 @@ class TestEdgeCases:
 def sample_dataframe():
     """Fixture providing a sample dataframe"""
     return pd.DataFrame({
-        'rank category': ['Senior', 'Junior', 'Manager'],
+        'Staff Category': ['Senior', 'Junior', 'Manager'],
         'allocation': ['1.0', '0.5', '1.0'],
         'staff_number': ['001', '002', '003'],
-        'rank': ['L5', 'L3', 'L6'],
+        'Rank': ['L5', 'L3', 'L6'],
         'cost centre name': ['IT', 'IT', 'HR'],
         'staff category order': [1, 2, 3]
     })
-
 
 @pytest.fixture
 def mock_excel_file(tmp_path, sample_dataframe):
@@ -602,7 +601,6 @@ def mock_excel_file(tmp_path, sample_dataframe):
     with pd.ExcelWriter(file_path) as writer:
         sample_dataframe.to_excel(writer, sheet_name='202301', index=False)
     return str(file_path)
-
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
