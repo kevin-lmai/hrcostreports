@@ -31,6 +31,7 @@ from markdown_pdf import MarkdownPdf, Section
 from py_markdown_table.markdown_table import markdown_table
 from enum import Enum
 from textwrap import shorten
+import math
 
 # set DEBUG True to display verbose debug information, programmer use only
 DEBUG = False
@@ -253,21 +254,29 @@ def prepare_department_fte_trend_report(
     markdown_table_data = []
 
     empty_v = {}
-    for k, v in sorted_result_dict.items():
+    for _, v in sorted_result_dict.items():
         for key in v.keys():
             empty_v[key] = ""
         break
-
-    for k, v in sorted_result_dict.items():
+        
+    for _, v in sorted_result_dict.items():
+        d = {}
         for key in v.keys():
             if key != "Staff Category":
-                v[key] = f"{float(v[key]):,.2f}"
+                d[key] = f"{float(v[key]):,.2f}"
+            else:
+                if isinstance(v[key], float) and math.isnan(v[key]):
+                    d[key] = ""
+                else:
+                    d[key] = (v[key]).strip()
+
         if v["Staff Category"] == "Total":
             markdown_table_data.append(empty_v)
             markdown_table_data.append(empty_v)
             for key in v.keys():
-                v[key] = "**" + v[key] + "**"
-        markdown_table_data.append(v)
+                if key != "Staff Category":
+                    d[key] = "**" + d[key] + "**"
+        markdown_table_data.append(d)
 
     markdown = (
         markdown_table(markdown_table_data)
@@ -366,21 +375,29 @@ def prepare_department_headcount_trend_report(
     markdown_table_data = []
 
     empty_v = {}
-    for k, v in sorted_result_dict.items():
+    for _, v in sorted_result_dict.items():
         for key in v.keys():
             empty_v[key] = ""
         break
 
-    for k, v in sorted_result_dict.items():
+    for _, v in sorted_result_dict.items():
+        d = {}
         for key in v.keys():
             if key != "Staff Category":
-                v[key] = f"{float(v[key]):,.0f}"
+                d[key] = f"{float(v[key]):,.0f}"
+            else:
+                if isinstance(v[key], float) and math.isnan(v[key]):
+                    d[key] = ""
+                else:
+                    d[key] = (v[key]).strip()
+                    
         if v["Staff Category"] == "Total":
             markdown_table_data.append(empty_v)
             markdown_table_data.append(empty_v)
             for key in v.keys():
-                v[key] = "**" + v[key] + "**"
-        markdown_table_data.append(v)
+                if key != "Staff Category":
+                    d[key] = "**" + d[key] + "**"
+        markdown_table_data.append(d)
 
     markdown = (
         markdown_table(markdown_table_data)
@@ -513,22 +530,30 @@ def prepare_department_fte_costcentre_report(
         markdown_table_data = []
 
         empty_v = {}
-        for k, v in sorted_result_dict.items():
+        for _, v in sorted_result_dict.items():
             for key in v.keys():
                 empty_v[key] = ""
             break
 
         last_staff_category = ""
-        for k, v in sorted_result_dict.items():
+        for _, v in sorted_result_dict.items():
+            d = {}
             for key in v.keys():
-                if key != "Staff Category" and key != "Rank":
-                    v[key] = f"{float(v[key]):,.1f}"
+                if key == "Staff Category" or key == "Rank":
+                    if isinstance(v[key], float) and math.isnan(v[key]):
+                        d[key] = ""
+                    else:
+                        d[key] = (v[key]).strip()
+                else:
+                    d[key] = f"{float(v[key]):,.1f}"
+                    
             if v["Staff Category"] == "Total":
                 last_staff_category = ""
                 markdown_table_data.append(empty_v)
                 markdown_table_data.append(empty_v)
                 for key in v.keys():
-                    v[key] = "**" + v[key] + "**"
+                    if key != "Rank" and key != "Staff Category":
+                        d[key] = "**" + d[key] + "**"
                 v["Rank"] = ""
             elif v["Staff Category"] == last_staff_category:
                 v["Staff Category"] = ""
@@ -659,9 +684,9 @@ def process_source_data(excelfile: str) -> int:
     except Exception:
         return ReturnCodes.ERROR_FILE_ERROR
 
-    first_row_df = file_expand_data_df.head(1)
-    if len(first_row_df.dropna(subset=["Rank"])) == 0:
-        clean_base_data_df = clean_base_data_df.head(len(clean_base_data_df) - 1)
+    #first_row_df = file_expand_data_df.head(1)
+    #if len(first_row_df.dropna(subset=["Rank"])) == 0:
+    #    clean_base_data_df = clean_base_data_df.head(len(clean_base_data_df) - 1)
 
     header = ["StaffNo", "Rank", "CCode", "CostCentre", "Allocated Percentage"]
     missing_headers = check_file_header(file_expand_data_df, header)
