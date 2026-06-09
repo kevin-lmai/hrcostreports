@@ -772,18 +772,20 @@ def process_source_data(excelfile: str) -> dict:
 
     cost_centre_data_df = file_cost_centre_data_df[header]
     clean_cost_centre_data_df = cost_centre_data_df.dropna(how="all")
-    clean_cost_centre_data_df = clean_cost_centre_data_df[
-        clean_cost_centre_data_df["Enabled/ Disabled"] == "Enabled"
-    ]
+
+    # not care if Enabled / Disabled
+    # clean_cost_centre_data_df = clean_cost_centre_data_df[
+    #    clean_cost_centre_data_df["Enabled/ Disabled"] == "Enabled"
+    # ]
 
     file_cost_centre_records_count: int = len(file_cost_centre_data_df.index)
     clean_cost_centre_records_count: int = len(clean_cost_centre_data_df.index)
 
-    if DEBUG:
-        if file_cost_centre_records_count != clean_cost_centre_records_count:
-            print(
-                f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count} 'Disabled' rows removed."
-            )
+    # if DEBUG:
+    #    if file_cost_centre_records_count != clean_cost_centre_records_count:
+    #        print(
+    #            f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count} 'Disabled' rows removed."
+    #        )
 
     # get the cost centre information
     clean_cost_centre_dict = clean_cost_centre_data_df.to_dict(orient="index")
