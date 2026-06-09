@@ -2,38 +2,38 @@
 
 import os
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-from dataprocess import (
-    process_source_data,
-    generate_excel_fr_df,
-    ReturnCodes,
-    generate_department_fte_summary_report,
-    generate_department_headcount_summary_report,
-    generate_department_fte_costcentre_report,
-    HEADER_SEPARATOR,
-)
 
 import flet
+from dateutil.relativedelta import relativedelta
 from flet import (
+    Card,
+    Colors,
     Column,
-    Row,
     Container,
+    ElevatedButton,
+    ElevatedButtonTheme,
+    FilePicker,
+    FilePickerResultEvent,
+    IconButton,
     Icons,
+    MainAxisAlignment,
     NavigationRail,
     NavigationRailDestination,
     Page,
+    Row,
     Text,
-    Card,
-    Colors,
-    ElevatedButton,
-    IconButton,
-    VerticalDivider,
-    FilePicker,
-    FilePickerResultEvent,
     Theme,
-    ElevatedButtonTheme,
-    MainAxisAlignment,
+    VerticalDivider,
+)
+
+from dataprocess import (
+    HEADER_SEPARATOR,
+    ReturnCodes,
+    generate_department_fte_costcentre_report,
+    generate_department_fte_summary_report,
+    generate_department_headcount_summary_report,
+    generate_excel_fr_df,
+    process_source_data,
 )
 
 # from flet import colors, icons
@@ -64,6 +64,7 @@ department_headcount_summary_report_title = "Headcount - Total"
 department_fte_costcentre_report_file_name = "HR_department_fte_costcentres_report"
 department_fte_costcentre_report_title = "Full Time Equivalent (FTE) by Department"
 
+
 def init_data_upload_setup():
     """Initialize the data upload, database setup parameters"""
 
@@ -76,7 +77,7 @@ def init_data_upload_setup():
     data_name = None
     data_directory = None
     database_file_directory = None
-    database_file_name = "HR_FTE_Database"
+    database_file_name = "HR_FTE_Database.xlsx"
     fte_data_date = datetime.now() - relativedelta(months=1)
 
 
@@ -263,50 +264,54 @@ def main(page: Page):
         global saved_database_name
 
         data_period = f"{str(fte_data_date.year)}{str(fte_data_date.month).zfill(2)}"
-        datafile = data_directory + data_name
-        report_file = database_file_directory + database_file_name
+        datafile = os.path.join(data_directory, data_name)
+        report_file = os.path.join(database_file_directory, database_file_name)
         result_dict = process_source_data(datafile)
-        input_excel_data_dict = {data_period : {'data' : result_dict["hr_fte_df"]}}
-        result = generate_excel_fr_df(
-            report_file, input_excel_data_dict
-        )
-        if result == ReturnCodes.OK_UPDATE_DATABASE:
+        if result_dict["return_code"] <= 0:
+            result = result_dict
+        else:
+            input_excel_data_dict = {data_period: {"data": result_dict["hr_fte_df"]}}
+            result = generate_excel_fr_df(report_file, input_excel_data_dict)
+
+        if result["return_code"] == ReturnCodes.OK_UPDATE_DATABASE.value:
             status_text_fte_upload.value = f"Congratulation!!\nDatabase file {database_file_directory}{database_file_name} was updated."
             database_file_saved = True
             saved_database_file_directory = database_file_directory
             saved_database_name = database_file_name
             generate_reports_button.disabled = False
             status_text_generate_reports.value = generate_report_status_content()
-        elif result == ReturnCodes.OK_GEN_NEW_DATABASE:
-            status_text_fte_upload.value = f"Congratulation!!\nDatabase file {database_file_directory}]{database_file_name} was created."
+        elif result["return_code"] == ReturnCodes.OK_GEN_NEW_DATABASE.value:
+            status_text_fte_upload.value = f"Congratulation!!\nDatabase file {database_file_directory}{database_file_name} was created."
             database_file_saved = True
             saved_database_file_directory = database_file_directory
             saved_database_name = database_file_name
             generate_reports_button.disabled = False
             status_text_generate_reports.value = generate_report_status_content()
-        elif result == ReturnCodes.ERROR_FILE_ERROR:
+        elif result["return_code"] == ReturnCodes.ERROR_FILE.value:
             status_text_fte_upload.value = (
                 "Oops!!\nInput file has error. Please check Headers and Sheets"
             )
-        elif result == ReturnCodes.ERROR_FILE_DATA_ERROR:
+        elif result["return_code"] == ReturnCodes.ERROR_FILE_DATA.value:
             status_text_fte_upload.value = (
                 "Oops!!\nInput file has duplicated staff ID or Error in Category Order"
             )
-        elif result == ReturnCodes.ERROR_FILE_LOADING:
+        elif result["return_code"] == ReturnCodes.ERROR_FILE_LOADING.value:
             status_text_fte_upload.value = "Oops!!\nInput file cannot be loaded"
-        elif result == ReturnCodes.ERROR_PROGRAM:
+        elif result["return_code"] == ReturnCodes.ERROR_PROGRAM.value:
             status_text_fte_upload.value = "Oops!!\nPossible program error occurred"
-        elif result == ReturnCodes.ERROR:
+        elif result["return_code"] == ReturnCodes.ERROR.value:
             status_text_fte_upload.value = "Oops!!\nSome error occurred"
         else:
             status_text_fte_upload.value = "Oops!!\nUnknown error occurred"
-        if len(result_dict["issue_staff_numbers_not_in_base"]) > 0:
+
+        if "issue_staff_numbers_not_in_base" in result:
             status_text_fte_upload.value = (
                 status_text_fte_upload.value
                 + "\n"
                 + f"Staff Numbers not found in Base Data: {', '.join(result_dict['issue_staff_numbers_not_in_base'])}"
             )
-        if len(result_dict["issue_expand_staff_fte_not_1"]) > 0:
+
+        if "issue_expand_staff_fte_not_1" in result:
             status_text_fte_upload.value = (
                 status_text_fte_upload.value
                 + "\n"
@@ -388,7 +393,9 @@ def main(page: Page):
     def generate_reports(e):
         """function to generate reports from saved database file"""
 
-        database_file_name = saved_database_file_directory + saved_database_name
+        database_file_name = os.path.join(
+            saved_database_file_directory, saved_database_name
+        )
         timestamp = (
             str(report_start_date.year)
             + str(report_start_date.month).zfill(2)
@@ -400,21 +407,22 @@ def main(page: Page):
         adj_department_fte_summary_report_file_name = (
             department_fte_summary_report_file_name + "_" + timestamp
         )
-        adj_department_fte_summary_report_file_name = (
-            saved_database_file_directory + adj_department_fte_summary_report_file_name
+        adj_department_fte_summary_report_file_name = os.path.join(
+            saved_database_file_directory, adj_department_fte_summary_report_file_name
         )
 
         report_header = f"{company_name}{HEADER_SEPARATOR}{department_fte_summary_report_title}{HEADER_SEPARATOR}{financial_year_header}"
-        
-        
-        if generate_department_fte_summary_report(
+
+        if (
+            generate_department_fte_summary_report(
                 database_file_name,
                 adj_department_fte_summary_report_file_name,
                 report_header,
                 report_start_date.year,
                 report_start_date.month,
-            ) == ReturnCodes.OK:
-            
+            )
+            == ReturnCodes.OK.value
+        ):
             pdf = adj_department_fte_summary_report_file_name + ".pdf"
             excel = adj_department_fte_summary_report_file_name + ".xlsx"
             if os.path.exists(pdf) and os.path.exists(excel):
@@ -422,32 +430,31 @@ def main(page: Page):
             else:
                 status_text_generate_reports.value = f"Oops\nGenerating report named {adj_department_fte_summary_report_file_name} (pdf / xlsx) was not successful."
         else:
-            status_text_generate_reports.value = f"Oops\nDatabase file has problem. Report named {adj_department_fte_summary_report_file_name} (pdf / xlsx) not generated"
+            status_text_generate_reports.value = f"Oops\nDatabase file has problems. Report named {adj_department_fte_summary_report_file_name} (pdf / xlsx) not generated"
 
         adj_department_headcount_summary_report_file_name = (
             department_headcount_summary_report_file_name + "_" + timestamp
         )
-        adj_department_headcount_summary_report_file_name = (
-            saved_database_file_directory
-            + adj_department_headcount_summary_report_file_name
+        adj_department_headcount_summary_report_file_name = os.path.join(
+            saved_database_file_directory,
+            adj_department_headcount_summary_report_file_name,
         )
 
         report_header = f"{company_name}{HEADER_SEPARATOR}{department_headcount_summary_report_title}{HEADER_SEPARATOR}{financial_year_header}"
 
-        if generate_department_headcount_summary_report(
+        if (
+            generate_department_headcount_summary_report(
                 database_file_name,
                 adj_department_headcount_summary_report_file_name,
                 report_header,
                 report_start_date.year,
                 report_start_date.month,
-            ) == ReturnCodes.OK:
-            
+            )
+            == ReturnCodes.OK.value
+        ):
             pdf = adj_department_headcount_summary_report_file_name + ".pdf"
             excel = adj_department_headcount_summary_report_file_name + ".xlsx"
             if os.path.exists(pdf) and os.path.exists(excel):
-
-    
-            #if os.path.exists(adj_department_headcount_summary_report_file_name):
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
@@ -463,15 +470,15 @@ def main(page: Page):
             status_text_generate_reports.value = (
                 status_text_generate_reports.value
                 + "\n"
-                + f"Oops\nDatabase file has problem. Report named {adj_department_headcount_summary_report_file_name} (pdf / xlsx) not generated"
+                + f"Oops\nDatabase file has problems. Report named {adj_department_headcount_summary_report_file_name} (pdf / xlsx) not generated"
             )
 
         adj_department_fte_costcentre_report_file_name = (
             department_fte_costcentre_report_file_name + "_" + timestamp
         )
-        adj_department_fte_costcentre_report_file_name = (
-            saved_database_file_directory
-            + adj_department_fte_costcentre_report_file_name
+        adj_department_fte_costcentre_report_file_name = os.path.join(
+            saved_database_file_directory,
+            adj_department_fte_costcentre_report_file_name,
         )
 
         report_header = f"{company_name}{HEADER_SEPARATOR}{department_fte_costcentre_report_title}{HEADER_SEPARATOR}{financial_year_header}"
@@ -484,14 +491,11 @@ def main(page: Page):
                 report_start_date.year,
                 report_start_date.month,
             )
-            == ReturnCodes.OK
+            == ReturnCodes.OK.value
         ):
-            
             pdf = adj_department_fte_costcentre_report_file_name + ".pdf"
             excel = adj_department_fte_costcentre_report_file_name + ".xlsx"
             if os.path.exists(pdf) and os.path.exists(excel):
-                
-            #if os.path.exists(adj_department_fte_costcentre_report_file_name):
                 status_text_generate_reports.value = (
                     status_text_generate_reports.value
                     + "\n"
@@ -507,7 +511,7 @@ def main(page: Page):
             status_text_generate_reports.value = (
                 status_text_generate_reports.value
                 + "\n"
-                + f"Oops\nDatabase file has problem. Report named {adj_department_fte_costcentre_report_file_name} (pdf / xlsx) not generated"
+                + f"Oops\nDatabase file has problems. Report named {adj_department_fte_costcentre_report_file_name} (pdf / xlsx) not generated"
             )
 
         page.update()
@@ -558,7 +562,7 @@ def main(page: Page):
                 "Wrong file or no file. Please Select FTE Monthly Data File"
             )
         else:
-            result = selected_file_result.files.pop()
+            result = selected_file_result.files[0]
             name = result.name
             path = result.path
             directory = path.replace(name, "")
@@ -587,7 +591,7 @@ def main(page: Page):
                 "Wrong Upload or no file. Please Select Database File"
             )
         else:
-            result = selected_file_result.files.pop()
+            result = selected_file_result.files[0]
             name = result.name
             path = result.path
             directory = path.replace(name, "")
@@ -614,7 +618,7 @@ def main(page: Page):
             status_text_generate_reports.value = generate_report_status_content()
             # status_text_generate_reports.value = f"Wrong Upload or no file. Please Select Database File"
         else:
-            result = selected_file_result.files.pop()
+            result = selected_file_result.files[0]
             name = result.name
             path = result.path
             directory = path.replace(name, "")
