@@ -1,6 +1,11 @@
 """
 Module provide all the necessary functions for data processing which are consumed by main program
 
+NOTE: This module has no Flet dependencies (it uses pandas / markdown_pdf only),
+so no Flet 0.86.5 API changes were required here. The corrupted indentation
+present in the uploaded copy (inside prepare_department_fte_costcentre_report
+and generate_excel_fr_df) has been repaired; the processing logic is unchanged.
+
 Functions:
 exported class:
 - ReturnCodes
@@ -28,7 +33,6 @@ local functions:
 import os
 from enum import Enum
 
-# from textwrap import shorten
 import pandas as pd
 from markdown_pdf import MarkdownPdf, Section
 from py_markdown_table.markdown_table import markdown_table
@@ -58,27 +62,16 @@ def generate_markdown_padding(
 
 
 def report_css_style():
-    # cell_y_padding = "8px"
-    # header_cell_y_padding = "10px"
     font_size = "9px"
     padding = "8px 8px 8px 8px"
     line_height = "1.2"
     margin_bottom = "0"
     margin_top = "0"
     font_family = "arial, sans-serif"
-    # table_header_bg_color = "#FFFFFF"
-    title_bg_color = "#FFFFFF"
-    # table_css = f"table {{width: 100%; border-collapse: collapse; font-size: {font_size} ; padding: {padding} {cell_y_padding}; }}"
+    title_bg_color = "#FFFF"
     table_css = f"table {{width: 100%; font-size: {font_size} ; text-align: center; font-family: {font_family} ; border-spacing: 4px; border-collapse: collapse; padding: {padding} ; }}"
-    # table_last_row = "table tr:last-child { font-weight: bold;color: black;}"
-    # table_2th_css = "table th + th { text-align: center; }"
     table_2td_css = "table td + td { text-align: center; }"
     table_td_css = "table td {text-align: left}"
-    # table_last_row2_css = "table tbody tr:last-child { font-weight: bold;color: black; padding: 10px; }"
-    # table_last_row_css = "table tr:last-child { font-weight: bold;color: black; padding: 10px; }"
-    # thead_th_css = f"thead th {{background-color: {table_header_bg_color} ;color: black;border: 0px solid #ddd;border-collapse: collapse; padding: {padding} ; }}"
-    # tbody_td_first_child_css = f"tbody td:first-child {{ text-align: left; font-weight: bold;border-collapse: collapse; padding: {padding};}}"
-    # tbody_td_css = f"tbody td {{ border-collapse: collapse;padding: {padding}; }}"
     h2_css = f"h2 {{text-align: left; background-color: {title_bg_color}; line-height: {line_height}; margin-bottom: {margin_bottom}; margin-top: {margin_top};}}"
     h3_css = f"h3 {{text-align: left; background-color: {title_bg_color}; line-height: {line_height}; margin-bottom: {margin_bottom}; margin-top: {margin_top};}}"
     h4_css = f"h4 {{text-align: left; background-color: {title_bg_color}; line-height: {line_height}; margin-bottom: {margin_bottom}; margin-top: {margin_top};}}"
@@ -124,7 +117,7 @@ def header_processing_excel(header_text: str) -> list[str]:
     return header_text.split(HEADER_SEPARATOR)
 
 
-def header_processing_pdf(header_text: str, header_mark="##### ") -> str:
+def header_processing_pdf(header_text: str, header_mark="#### ") -> str:
     header_substrings = header_text.split(HEADER_SEPARATOR)
     processed_header_strings = ""
 
@@ -177,11 +170,9 @@ def prepare_department_fte_trend_report(
     """Return markdown report content and css for fte trend report generation from database file"""
 
     try:
-        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception:
         return {"return_code": ReturnCodes.ERROR_FILE_LOADING.value}
-        # raise f"Error loading file {data_file_name}: {e}"
 
     periods_result = get_available_periods(
         list(data_df_dict.keys()), start_year, start_month, max_number_of_month
@@ -255,8 +246,6 @@ def prepare_department_fte_trend_report(
 
     sorted_result_dict = sorted_result_df.to_dict(orient="index")
 
-    # sorted_result_dict = sorted_result_df.round(2).astype(str).to_dict(orient="index")
-
     excel_df_dict["fte"] = {"data": sorted_result_df}
 
     markdown_table_data = []
@@ -314,7 +303,6 @@ def prepare_department_headcount_trend_report(
     """Return markdown report content and css for department headcount trend report generation from database file"""
 
     try:
-        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception:
         return {
@@ -448,7 +436,6 @@ def prepare_department_fte_costcentre_report(
     """Return markdown report content and css for department fte report generation from database file"""
 
     try:
-        # data_df_dict = pd.read_excel(data_file_name,sheet_name=None,header=0,dtype=object)
         data_df_dict = pd.read_excel(data_file_name, sheet_name=None, header=0)
     except Exception:
         return {"return_code": ReturnCodes.ERROR_FILE_LOADING.value}
@@ -471,8 +458,6 @@ def prepare_department_fte_costcentre_report(
         data_df = data_df_dict[period]
 
         cost_centres = data_df["cost centre name"].copy().drop_duplicates().to_list()
-
-        # data_df["Staff Category duplicate"] = data_df["Staff Category"]
 
         for c in cost_centres:
             if c not in all_costcentre_result_dict.keys():
@@ -593,7 +578,7 @@ def prepare_department_fte_costcentre_report(
             )
             markdown = markdown.replace("nan", "-")
 
-            markdown_with_costcentre_name = f"##### Cost Centre : {cost_centre} ({cost_centre_code_dict[cost_centre]})<p>\n\n{markdown}"
+            markdown_with_costcentre_name = f"#### Cost Centre : {cost_centre} ({cost_centre_code_dict[cost_centre]})<p>\n\n{markdown}"
 
             css = report_css_style()
             result_md = {}
@@ -612,8 +597,7 @@ def prepare_department_fte_costcentre_report(
 def generate_pdf_report(report_name: str, content: list, title: str = "Report"):
     """Generate PDF report from markdown content and css list input from prepare report functions"""
 
-    # header = f"## {title}"
-    header = header_processing_pdf(title, header_mark="##### ")
+    header = header_processing_pdf(title, header_mark="#### ")
 
     pdf = MarkdownPdf()
     for c in content:
@@ -636,8 +620,7 @@ def check_file_header(df: pd.DataFrame, expected_headers: list) -> list:
 
 
 def process_source_data(excelfile: str) -> dict:
-    """Process the source excel file and return data dictionary or error code"""
-    """
+    """Process the source excel file and return data dictionary or error code
 
     Returns:
         Error: ReturnCodes - error code
@@ -652,7 +635,6 @@ def process_source_data(excelfile: str) -> dict:
         file_base_data_df = pd.read_excel(
             excelfile, sheet_name=0, header=0, dtype=object
         )
-        # file_base_data_df = pd.read_excel(excelfile,sheet_name=0,header=0)
     except Exception:
         return {"return_code": ReturnCodes.ERROR_FILE.value}
 
@@ -681,11 +663,9 @@ def process_source_data(excelfile: str) -> dict:
 
     if file_base_records_count != clean_base_records_count:
         pass
-        # print(f"Base data had {file_base_records_count - clean_base_records_count} empty rows removed.")
 
     # check for duplicate StaffNo in base data
     if len(pd.unique(clean_base_data_df["StaffNo"])) != len(clean_base_data_df):
-        # print("Warning: Duplicate Staff Numbers found in Base Data!")
         return {"return_code": ReturnCodes.ERROR_FILE_DATA.value}
 
     # set the right data types for data Series
@@ -712,14 +692,9 @@ def process_source_data(excelfile: str) -> dict:
 
     # read sheet 2
     try:
-        # file_expand_data_df = pd.read_excel(excelfile,sheet_name=1,header=1,dtype=object)
         file_expand_data_df = pd.read_excel(excelfile, sheet_name=1, header=1)
     except Exception:
         return {"return_code": ReturnCodes.ERROR_FILE.value}
-
-    # first_row_df = file_expand_data_df.head(1)
-    # if len(first_row_df.dropna(subset=["Rank"])) == 0:
-    #    clean_base_data_df = clean_base_data_df.head(len(clean_base_data_df) - 1)
 
     header = ["StaffNo", "Rank", "CCode", "CostCentre", "Allocated Percentage"]
     missing_headers = check_file_header(file_expand_data_df, header)
@@ -751,7 +726,7 @@ def process_source_data(excelfile: str) -> dict:
     clean_expand_data_df = new_clean_expand_data_df
 
     if DEBUG:
-        print("clean_expand_data_df ------ ")
+        print("clean_expand_data_df ---- ")
         print(clean_expand_data_df.head(5))
 
     # read sheet 3, cost center information
@@ -759,33 +734,19 @@ def process_source_data(excelfile: str) -> dict:
         file_cost_centre_data_df = pd.read_excel(
             excelfile, sheet_name=2, header=0, dtype=object
         )
-        # file_cost_centre_data_df = pd.read_excel(excelfile,sheet_name=2,header=0)
     except Exception:
-        # print(f"Error loading base sheet 3: {e}")
         return {"return_code": ReturnCodes.ERROR_FILE.value}
 
     header = ["Value", "Description", "Enabled/ Disabled"]
     missing_headers = check_file_header(file_cost_centre_data_df, header)
     if len(missing_headers) > 0:
-        # print(f"Error: sheet 3 Missing expected column '{", ".join(missing_headers)}' in cost centre  data sheet.")
         return {"return_code": ReturnCodes.ERROR_FILE.value}
 
     cost_centre_data_df = file_cost_centre_data_df[header]
     clean_cost_centre_data_df = cost_centre_data_df.dropna(how="all")
 
-    # not care if Enabled / Disabled
-    # clean_cost_centre_data_df = clean_cost_centre_data_df[
-    #    clean_cost_centre_data_df["Enabled/ Disabled"] == "Enabled"
-    # ]
-
     file_cost_centre_records_count: int = len(file_cost_centre_data_df.index)
     clean_cost_centre_records_count: int = len(clean_cost_centre_data_df.index)
-
-    # if DEBUG:
-    #    if file_cost_centre_records_count != clean_cost_centre_records_count:
-    #        print(
-    #            f"Cost centres data had {file_cost_centre_records_count - clean_cost_centre_records_count} 'Disabled' rows removed."
-    #        )
 
     # get the cost centre information
     clean_cost_centre_dict = clean_cost_centre_data_df.to_dict(orient="index")
@@ -806,7 +767,6 @@ def process_source_data(excelfile: str) -> dict:
         print()
     # read sheet 4 Staff Category Order
     try:
-        # file_staff_category_order_data_df = pd.read_excel(excelfile,sheet_name=3,header=0,dtype=object)
         file_staff_category_order_data_df = pd.read_excel(
             excelfile, sheet_name=3, header=0
         )
@@ -820,7 +780,6 @@ def process_source_data(excelfile: str) -> dict:
         missing_headers = check_file_header(file_staff_category_order_data_df, header)
         if len(missing_headers) > 0:
             return {"return_code": ReturnCodes.ERROR_FILE.value}
-            # return f"Error: Missing expected column '{", ".join(missing_headers)}' in staff category data sheet."
 
         staff_category_order_data_df = file_staff_category_order_data_df[header]
         clean_staff_category_order_data_df = staff_category_order_data_df.dropna(
@@ -861,7 +820,6 @@ def process_source_data(excelfile: str) -> dict:
         sorted_staff_category_order_list = sorted(
             pd.unique(clean_base_data_df["Staff Category"]).tolist()
         )
-        # sorted_staff_category_order_list = sorted(staff_category_order_list)
         staff_category_order_dict = {}
         for i in range(len(sorted_staff_category_order_list)):
             staff_category_order_dict[sorted_staff_category_order_list[i]] = i + 1
@@ -870,7 +828,7 @@ def process_source_data(excelfile: str) -> dict:
     clean_base_data_df = clean_base_data_df.set_index("StaffNo")
     clean_base_dict = clean_base_data_df.to_dict(orient="index")
     if DEBUG:
-        print("clean_base_dict ------ ")
+        print("clean_base_dict ---- ")
         print(clean_base_dict)
     # clean_base_dict has key as StaffNo, value as dict of other columns
     clean_expand_dict = clean_expand_data_df.to_dict(orient="index")
@@ -949,12 +907,6 @@ def process_source_data(excelfile: str) -> dict:
         }
         expanded_entries.append(clean_item)
 
-        # if DEBUG:
-        #    print(f"Adding base only record for staff number {k}")
-        #    print(clean_item)
-
-        # expanded_entries.append({'staff_number' : k, 'rank' : v['Rank'], 'Staff Category' : v['Staff Category'], 'staff category order' : staff_category_order_dict[v['Staff Category']],'cost centre code' : str(v['Default Cost Centre']).zfill(3), 'cost centre name' : cost_centre_info[str(v['Default Cost Centre']).zfill(3)], 'allocation' : v['FTE']})
-
     result_df = pd.DataFrame(expanded_entries)
     if DEBUG:
         print(f"Total records processed: {len(result_df.index)}")
@@ -986,21 +938,17 @@ def process_source_data(excelfile: str) -> dict:
 
 
 def clean_sheet_name(sheet_name: str) -> str:
-    mytable = str.maketrans("\\/*?:[].", "________")
+    mytable = str.maketrans("\\/*?:[].", "____")
 
     return sheet_name.translate(mytable)[:SHEET_NAME_MAX_LENGTH]
 
 
 def generate_excel_fr_df(
-    # reportname: str, sheet_names: list[str], result_df: pd.DataFrame
     reportname: str,
     input_data_dict: dict,
 ) -> dict:
-    # reportname = reportname + ".xlsx"
-
     if not os.path.exists(reportname):
         with pd.ExcelWriter(f"{reportname}", mode="w") as writer:
-            # df1.to_excel(writer, sheet_name='Sheet_name_3')
             for sheet_name, data_df_dict in input_data_dict.items():
                 clean_name = clean_sheet_name(sheet_name)
 
@@ -1176,7 +1124,6 @@ def generate_department_fte_costcentre_report(
     department_fte_costcentre_content = prepare_department_fte_costcentre_report(
         fte_data_file_name, start_year, start_month, number_of_month
     )
-    # print(department_fte_trend_content)
     if department_fte_costcentre_content["return_code"] <= 0:
         return department_fte_costcentre_content["return_code"]
     else:

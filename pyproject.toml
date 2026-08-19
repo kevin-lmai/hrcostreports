@@ -3,13 +3,13 @@ name = "costcenter"
 version = "0.1.0"
 description = ""
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-  "flet==0.28.2",
-  "flet-cli==0.28.2",
+  "flet==0.86.5",
+  "flet-cli==0.86.5",
   "markdown-pdf>=1.10",
   "openpyxl>=3.1.5",
   "pandas>=2.3.3",
@@ -38,7 +38,7 @@ path = "src"
 
 [tool.uv]
 dev-dependencies = [
-    "flet[all]==0.28.2",
+    "flet[all]==0.86.5",
     "pytest>=8.4.2",
     "ruff>=0.14.10",
 ]
@@ -47,7 +47,7 @@ dev-dependencies = [
 package-mode = false
 
 [tool.poetry.group.dev.dependencies]
-flet = {extras = ["all"], version = "0.28.2"}
+flet = {extras = ["all"], version = "0.86.5"}
 
 [tool.flet.flutter.pubspec.dependency_overrides]
 webview_flutter_android = "4.10.1"
