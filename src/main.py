@@ -38,6 +38,7 @@ from dataprocess import (
     process_source_data,
 )
 
+APP_VERSION = 'v0.9.8'
 # FTE Data Upload related global variables
 data_name = None
 data_directory = None
@@ -680,7 +681,7 @@ def main(page: Page):
         ),
     ]
 
-    menu_layout = DesktopAppLayout(page=page, pages=pages, title="HR Cost Reporting")
+    menu_layout = DesktopAppLayout(page=page, pages=pages, title=f"HR Cost Reporting ({APP_VERSION})")
 
     page.bgcolor = Colors.WHITE
     page.add(menu_layout)

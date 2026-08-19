@@ -6,6 +6,12 @@ so no Flet 0.86.5 API changes were required here. The corrupted indentation
 present in the uploaded copy (inside prepare_department_fte_costcentre_report
 and generate_excel_fr_df) has been repaired; the processing logic is unchanged.
 
+Fixes applied:
+- Silenced third-party DeprecationWarning noise from markdown_pdf -> PyMuPDF (fitz).
+- clean_sheet_name uses a dict-based maketrans (fixes unequal-length ValueError).
+- prepare_department_fte_costcentre_report casts values with str() before .strip()
+  (fixes AttributeError on numeric Rank values / real NaN).
+
 Functions:
 exported class:
 - ReturnCodes
@@ -23,7 +29,7 @@ local functions:
 - prepare_department_fte_trend_report
 - prepare_department_headcount_trend_report
 - prepare_department_fte_costcentre_report
-- generate_pdf_report
+- PDF_Generator_report
 - check_file_header
 - report_css_style
 - clean_sheet_name
@@ -31,7 +37,22 @@ local functions:
 """
 
 import os
+import warnings
 from enum import Enum
+
+# Silence third-party deprecation noise from markdown_pdf -> PyMuPDF (fitz).
+# Must be registered BEFORE importing markdown_pdf, because the `fitz` import
+# (and the SWIG swigvarlink warning) fire at import time.
+warnings.filterwarnings(
+    "ignore",
+    message=r"The `fitz` API is deprecated.*",
+    category=DeprecationWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r".*swigvarlink has no __module__ attribute.*",
+    category=DeprecationWarning,
+)
 
 import pandas as pd
 from markdown_pdf import MarkdownPdf, Section
@@ -265,7 +286,7 @@ def prepare_department_fte_trend_report(
                 if v[key] == "nan":
                     d[key] = ""
                 else:
-                    d[key] = (v[key]).strip()
+                    d[key] = str(v[key]).strip()
 
         if v["Staff Category"] == "Total":
             markdown_table_data.append(empty_v)
@@ -398,7 +419,7 @@ def prepare_department_headcount_trend_report(
                 if v[key] == "nan":
                     d[key] = ""
                 else:
-                    d[key] = (v[key]).strip()
+                    d[key] = str(v[key]).strip()
 
         if v["Staff Category"] == "Total":
             markdown_table_data.append(empty_v)
@@ -549,10 +570,11 @@ def prepare_department_fte_costcentre_report(
                 d = {}
                 for key in v.keys():
                     if key == "Staff Category" or key == "Rank":
-                        if v[key] == "nan":
+                        val = v[key]
+                        if pd.isna(val) or str(val) == "nan":
                             d[key] = ""
                         else:
-                            d[key] = (v[key]).strip()
+                            d[key] = str(val).strip()
                     else:
                         d[key] = f"{float(v[key]):,.1f}"
 
@@ -594,7 +616,7 @@ def prepare_department_fte_costcentre_report(
     }
 
 
-def generate_pdf_report(report_name: str, content: list, title: str = "Report"):
+def PDF_Generator_report(report_name: str, content: list, title: str = "Report"):
     """Generate PDF report from markdown content and css list input from prepare report functions"""
 
     header = header_processing_pdf(title, header_mark="#### ")
@@ -938,7 +960,7 @@ def process_source_data(excelfile: str) -> dict:
 
 
 def clean_sheet_name(sheet_name: str) -> str:
-    mytable = str.maketrans("\\/*?:[].", "____")
+    mytable = str.maketrans({c: "_" for c in "\\/*?:[]."})
 
     return sheet_name.translate(mytable)[:SHEET_NAME_MAX_LENGTH]
 
@@ -1043,7 +1065,7 @@ def generate_department_fte_summary_report(
         report_title = f"{report_title} {period}"
 
         if "md" in department_fte_trend_content.keys():
-            generate_pdf_report(
+            PDF_Generator_report(
                 department_fte_summary_report_file_name,
                 department_fte_trend_content["md"],
                 report_title,
@@ -1089,7 +1111,7 @@ def generate_department_headcount_summary_report(
         report_title = f"{report_title} {period}"
 
         if "md" in department_headcount_trend_content.keys():
-            generate_pdf_report(
+            PDF_Generator_report(
                 department_headcount_summary_report_file_name,
                 department_headcount_trend_content["md"],
                 report_title,
@@ -1135,7 +1157,7 @@ def generate_department_fte_costcentre_report(
         report_title = f"{report_title} {period}"
 
         if "md" in department_fte_costcentre_content.keys():
-            generate_pdf_report(
+            PDF_Generator_report(
                 department_fte_costcentre_report_file_name,
                 department_fte_costcentre_content["md"],
                 report_title,

@@ -15,3 +15,7 @@
 # Data constraint
 - FTE in Override Sheet should be equal to 1.0 (100%). Report will be generated but issue number will be shown
 - Staff Number found in Override Sheet but not found in Base Sheet, will also be shown
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

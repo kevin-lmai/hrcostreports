@@ -51,3 +51,6 @@ flet = {extras = ["all"], version = "0.86.5"}
 
 [tool.flet.flutter.pubspec.dependency_overrides]
 webview_flutter_android = "4.10.1"
+
+[tool.flet.macos]
+build_arch = "universal"
